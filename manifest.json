@@ -1,0 +1,39 @@
+{
+  "name": "SnapAbsen — Aplikasi Absensi",
+  "short_name": "SnapAbsen",
+  "description": "Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a56db",
+  "theme_color": "#1a56db",
+  "orientation": "portrait-primary",
+  "lang": "id",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "icon-72.png",  "sizes": "72x72",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-128.png", "sizes": "128x128", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Absen Sekarang",
+      "short_name": "Absen",
+      "description": "Langsung buka form absensi",
+      "url": "./index.html#absen",
+      "icons": [{ "src": "icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Riwayat Absensi",
+      "short_name": "Riwayat",
+      "description": "Lihat riwayat kehadiran",
+      "url": "./index.html#riwayat",
+      "icons": [{ "src": "icon-96.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
