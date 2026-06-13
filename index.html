@@ -2277,70 +2277,10 @@ async function fbLogin(email,pass){
 async function fbSaveProfile(uid,data){if(!firebaseDb)return;try{await firebaseDb.collection('users').doc(uid).set(data,{merge:true});}catch(e){console.error(e);}}
 async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await firebaseDb.collection('users').doc(uid).get();return d.exists?d.data():null;}catch(e){return null;}}
 async function saveAbsenToFirebase(record){
-  // Upload foto ke Firebase Storage jika tersedia
-  if(firebaseStorage && typeof firebaseStorage.ref === 'function' && record.photoBase64 && firebaseUser){
-    dbgLog('Storage: mulai upload...');
-    try{
-      const uid = record.uid || firebaseUser.uid;
-      const timestamp = Date.now();
-      const fileName = uid+'_'+record.type+'_'+record.date+'_'+timestamp+'.jpg';
-      const storageRef = firebaseStorage.ref('absensi/'+uid+'/'+fileName);
-      dbgLog('Storage: ref OK, convert blob...');
-
-      // Konversi base64 ke blob, dengan kompresi ulang jika masih > 200KB
-      let photoSrc = record.photoBase64;
-      const MAX_UPLOAD_BYTES = 200 * 1024; // 200KB
-      // Cek ukuran estimasi dari base64
-      const estimatedBytes = Math.round((photoSrc.length * 3) / 4);
-      if(estimatedBytes > MAX_UPLOAD_BYTES){
-        // Re-compress via canvas
-        await new Promise(resolve=>{
-          const img2=new Image();
-          img2.onload=()=>{
-            const cv2=document.createElement('canvas');
-            let w2=img2.width,h2=img2.height;
-            const MAX2=640;
-            if(w2>MAX2||h2>MAX2){if(w2>h2){h2=Math.round(h2*(MAX2/w2));w2=MAX2;}else{w2=Math.round(w2*(MAX2/h2));h2=MAX2;}}
-            cv2.width=w2;cv2.height=h2;cv2.getContext('2d').drawImage(img2,0,0,w2,h2);
-            photoSrc=cv2.toDataURL('image/jpeg',.55);
-            resolve();
-          };
-          img2.src=photoSrc;
-        });
-      }
-      const base64Data = photoSrc.split(',')[1] || photoSrc;
-      const byteChars = atob(base64Data);
-      const byteArr = new Uint8Array(byteChars.length);
-      for(let i=0;i<byteChars.length;i++) byteArr[i]=byteChars.charCodeAt(i);
-      const blob = new Blob([byteArr], {type:'image/jpeg'});
-
-      dbgLog('Storage: upload blob '+Math.round(blob.size/1024)+'KB ...');
-      // Upload ke Storage
-      const snapshot = await storageRef.put(blob, {
-        contentType: 'image/jpeg',
-        customMetadata: {
-          uid, type: record.type, date: record.date,
-          userName: record.userName||'', uploadedAt: new Date().toISOString()
-        }
-      });
-      dbgLog('Storage: upload selesai, ambil URL...');
-      const downloadURL = await snapshot.ref.getDownloadURL();
-
-      // Ganti base64 dengan URL
-      record.photoURL = downloadURL;
-      record.photoBase64 = null;
-      dbgLog('Storage: URL OK, lanjut Firestore...');
-      console.log('[Storage] Foto uploaded:', downloadURL);
-    }catch(e){
-      console.error('[Storage] Upload gagal, simpan tanpa foto:', e);
-      record.photoBase64 = null; // gagal upload, hapus base64 agar tidak overflow Firestore
-    }
-  } else {
-    // Tidak ada Storage — hapus base64 agar tidak melebihi batas 1MB Firestore
-    if(record.photoBase64) {
-      console.warn('[Firestore] Storage tidak tersedia — foto tidak disimpan');
-      record.photoBase64 = null;
-    }
+  // Simpan foto base64 langsung ke Firestore (Firebase Spark - tanpa Storage)
+  // Foto sudah dicompress ke ~20-30KB, aman untuk limit 1MB Firestore
+  if(record.photoBase64){
+    dbgLog('Foto '+Math.round(record.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
   }
 
   dbgLog('Firestore: menyimpan dokumen...');
