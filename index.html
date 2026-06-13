@@ -1567,21 +1567,32 @@ function buildConfirmSummary(){
   else document.getElementById('confirm-radius-row').innerHTML='<i class="fas fa-info-circle" style="color:var(--yellow);width:14px"></i><span style="color:var(--yellow)">Radius belum dikonfigurasi</span>';
   if(capturedPhoto){const th=document.getElementById('thumb-canvas');const img=new Image();img.src=capturedPhoto;img.onload=()=>th.getContext('2d').drawImage(img,0,0,60,60);}
 }
-function submitAbsen(type){
+async function submitAbsen(type){
   const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  saveAbsenToFirebase({
-    type, time:t, date:now.toISOString().split('T')[0],
-    lat:currentLocation?.lat, lng:currentLocation?.lng,
-    accuracy:currentLocation?.acc,
-    fakeGpsScore:currentLocation?.fakeScore||0,
-    gpsWarnings:currentLocation?.warnings||[],
-    photoBase64: capturedPhoto || null,
-    uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole
-  });
-  if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
-  else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
-  closeAbsenModal();showToast((type==='masuk'?'Absen masuk':'Absen pulang')+' berhasil! Pukul '+t,'success');
-  setTimeout(loadMyAbsensiToday,1500);
+  // Disable semua tombol absen agar tidak double-submit
+  const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
+  btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
+  showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
+  try{
+    await saveAbsenToFirebase({
+      type, time:t, date:now.toISOString().split('T')[0],
+      lat:currentLocation?.lat, lng:currentLocation?.lng,
+      accuracy:currentLocation?.acc,
+      fakeGpsScore:currentLocation?.fakeScore||0,
+      gpsWarnings:currentLocation?.warnings||[],
+      photoBase64: capturedPhoto || null,
+      uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole
+    });
+    if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
+    else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
+    closeAbsenModal();
+    showToast((type==='masuk'?'Absen masuk':'Absen pulang')+' berhasil! Pukul '+t,'success');
+    setTimeout(loadMyAbsensiToday,1500);
+  }catch(err){
+    console.error('[submitAbsen] Error:', err);
+    showToast('Gagal menyimpan absensi: '+(err.message||err),'error');
+    btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
+  }
 }
 
 // RIWAYAT
@@ -2177,8 +2188,16 @@ function loadFirebaseSDK(cfg){
       // Init services
       firebaseAuth = firebase.auth(app);
       firebaseDb   = firebase.firestore(app);
-      // Storage diinit secara lazy — setelah SDK storage selesai dimuat
-      firebaseStorage = null;
+      // Init Storage langsung — SDK sudah pasti loaded karena kita load berurutan di atas
+      try{
+        if(typeof firebase.storage !== 'undefined'){
+          firebaseStorage = firebase.storage(app);
+          console.log('[Firebase] Storage initialized OK');
+        } else {
+          firebaseStorage = null;
+          console.warn('[Firebase] Storage SDK tidak tersedia');
+        }
+      }catch(se){ console.warn('[Firebase] Storage init gagal:',se.message); firebaseStorage = null; }
       firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
       // Auth state listener
       firebaseAuth.onAuthStateChanged(async user=>{
@@ -2212,14 +2231,6 @@ function loadFirebaseSDK(cfg){
       console.error('[Firebase] Init error:',e);
       showToast('Gagal init Firebase: '+e.message,'error');
     }
-  }).then(()=>{
-    // Lazy init Storage setelah semua SDK siap
-    try{
-      if(typeof firebase!=='undefined' && typeof firebase.storage!=='undefined' && firebase.apps.length>0){
-        firebaseStorage=firebase.storage(firebase.app());
-        console.log('[Firebase] Storage initialized OK');
-      }
-    }catch(se){ console.warn('[Firebase] Storage skip:',se.message); firebaseStorage=null; }
   }).catch(e=>{
     console.error('[Firebase SDK] Error:',e);
     showToast('Gagal muat Firebase SDK: '+e.message,'error');
@@ -2280,9 +2291,8 @@ async function saveAbsenToFirebase(record){
   }
 
   if(firebaseDb){
-    firebaseDb.collection('absensi')
-      .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()})
-      .catch(e=>console.error('Firestore error:',e));
+    await firebaseDb.collection('absensi')
+      .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
   } else {
     let local=JSON.parse(localStorage.getItem('absensi_data')||'[]');
     local.unshift({...record, createdAt:new Date().toISOString()});
