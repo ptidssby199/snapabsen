@@ -1575,12 +1575,32 @@ function buildConfirmSummary(){
   else document.getElementById('confirm-radius-row').innerHTML='<i class="fas fa-info-circle" style="color:var(--yellow);width:14px"></i><span style="color:var(--yellow)">Radius belum dikonfigurasi</span>';
   if(capturedPhoto){const th=document.getElementById('thumb-canvas');const img=new Image();img.src=capturedPhoto;img.onload=()=>th.getContext('2d').drawImage(img,0,0,60,60);}
 }
+// Debug logger — tampil di layar HP
+function dbgLog(msg){
+  let box=document.getElementById('_dbg_box');
+  if(!box){
+    box=document.createElement('div');
+    box.id='_dbg_box';
+    box.style.cssText='position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.88);color:#0f0;font-size:.7rem;font-family:monospace;padding:8px;z-index:99999;max-height:38vh;overflow-y:auto;';
+    const cb=document.createElement('button');
+    cb.textContent='x Tutup Log';
+    cb.style.cssText='display:block;margin-bottom:6px;background:#555;color:#fff;border:none;padding:4px 10px;border-radius:4px;font-size:.7rem;cursor:pointer;';
+    cb.onclick=()=>box.remove();
+    box.appendChild(cb);
+    document.body.appendChild(box);
+  }
+  const line=document.createElement('div');
+  line.textContent='['+new Date().toLocaleTimeString('id')+'] '+msg;
+  box.appendChild(line);
+  box.scrollTop=box.scrollHeight;
+}
 async function submitAbsen(type){
   const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   // Disable semua tombol absen agar tidak double-submit
   const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
   btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
   showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
+  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
     await saveAbsenToFirebase({
       type, time:t, date:now.toISOString().split('T')[0],
@@ -2259,11 +2279,13 @@ async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await fi
 async function saveAbsenToFirebase(record){
   // Upload foto ke Firebase Storage jika tersedia
   if(firebaseStorage && typeof firebaseStorage.ref === 'function' && record.photoBase64 && firebaseUser){
+    dbgLog('Storage: mulai upload...');
     try{
       const uid = record.uid || firebaseUser.uid;
       const timestamp = Date.now();
       const fileName = uid+'_'+record.type+'_'+record.date+'_'+timestamp+'.jpg';
       const storageRef = firebaseStorage.ref('absensi/'+uid+'/'+fileName);
+      dbgLog('Storage: ref OK, convert blob...');
 
       // Konversi base64 ke blob, dengan kompresi ulang jika masih > 200KB
       let photoSrc = record.photoBase64;
@@ -2292,6 +2314,7 @@ async function saveAbsenToFirebase(record){
       for(let i=0;i<byteChars.length;i++) byteArr[i]=byteChars.charCodeAt(i);
       const blob = new Blob([byteArr], {type:'image/jpeg'});
 
+      dbgLog('Storage: upload blob '+Math.round(blob.size/1024)+'KB ...');
       // Upload ke Storage
       const snapshot = await storageRef.put(blob, {
         contentType: 'image/jpeg',
@@ -2300,11 +2323,13 @@ async function saveAbsenToFirebase(record){
           userName: record.userName||'', uploadedAt: new Date().toISOString()
         }
       });
+      dbgLog('Storage: upload selesai, ambil URL...');
       const downloadURL = await snapshot.ref.getDownloadURL();
 
       // Ganti base64 dengan URL
       record.photoURL = downloadURL;
-      record.photoBase64 = null; // jangan simpan base64 ke Firestore
+      record.photoBase64 = null;
+      dbgLog('Storage: URL OK, lanjut Firestore...');
       console.log('[Storage] Foto uploaded:', downloadURL);
     }catch(e){
       console.error('[Storage] Upload gagal, simpan tanpa foto:', e);
@@ -2318,9 +2343,11 @@ async function saveAbsenToFirebase(record){
     }
   }
 
+  dbgLog('Firestore: menyimpan dokumen...');
   if(firebaseDb){
     await firebaseDb.collection('absensi')
       .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+    dbgLog('Firestore: TERSIMPAN!');
   } else {
     let local=JSON.parse(localStorage.getItem('absensi_data')||'[]');
     local.unshift({...record, createdAt:new Date().toISOString()});
