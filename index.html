@@ -1926,7 +1926,7 @@ function exportExcel(){
   laporanData.forEach(r=>{const key=(r.uid||'x')+'|'+(r.date||'');if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat,lng:r.lng};if(r.type==='masuk'){grouped[key].masuk=r.time;grouped[key].lat=r.lat;grouped[key].lng=r.lng;}if(r.type==='pulang')grouped[key].pulang=r.time;grouped[key].uid=r.uid;});
   const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-  const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','URL Foto Masuk'];
+  const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','Foto Masuk (URL/Base64)'];
   const csvRows=[hdr.join(';')];
   rows.forEach((r,i)=>{
     const d=new Date(r.tanggal||'');const tgl=isNaN(d)?r.tanggal:d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
@@ -1936,9 +1936,9 @@ function exportExcel(){
     const batasExp = t2 ? t2.batas : '—';
     const telatExp = t2 ? (t2.telat ? '+'+t2.display : 'Tepat Waktu') : '—';
     const st=r.masuk==='—'?'Tidak Hadir':r.pulang==='—'?'Belum Pulang':'Hadir';
-    // Cari photoURL dari laporanData
+    // Cari foto dari laporanData (photoURL jika ada, fallback ke photoBase64)
     const srcRows=laporanData.filter(x=>x.uid===r.uid&&x.date===r.tanggal&&x.type==='masuk');
-    const photoURLExp=srcRows.length?srcRows[0].photoURL||'':'';
+    const photoURLExp=srcRows.length?(srcRows[0].photoURL||srcRows[0].photoBase64||''):'';
     csvRows.push([i+1,r.nama,tgl,shiftNamaExp,batasExp,r.masuk,telatExp,r.pulang,dur,st,r.lat||'',r.lng||'',photoURLExp].join(';'));
   });
   csvRows.push('');csvRows.push(['RINGKASAN','','','','','','','',''].join(';'));
