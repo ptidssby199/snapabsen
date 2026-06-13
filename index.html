@@ -1544,8 +1544,16 @@ function startCamera(){
 function capturePhoto(){
   const v=document.getElementById('camera-video');
   if(!cameraStream||v.style.display==='none'){showToast('Aktifkan kamera dulu','warning');return;}
-  const c=document.getElementById('camera-canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);
-  capturedPhoto=c.toDataURL('image/jpeg',.7);c.style.display='block';v.style.display='none';
+  const c=document.getElementById('camera-canvas');
+  // Compress: resize ke max 800px untuk hemat ukuran file & percepat upload
+  const MAX_SIZE=800;
+  let w=v.videoWidth, h=v.videoHeight;
+  if(w>MAX_SIZE||h>MAX_SIZE){
+    if(w>h){h=Math.round(h*(MAX_SIZE/w));w=MAX_SIZE;}
+    else{w=Math.round(w*(MAX_SIZE/h));h=MAX_SIZE;}
+  }
+  c.width=w;c.height=h;c.getContext('2d').drawImage(v,0,0,w,h);
+  capturedPhoto=c.toDataURL('image/jpeg',.65);c.style.display='block';v.style.display='none';
   document.getElementById('cam-overlay').style.display='none';document.getElementById('cam-taken-badge').style.display='block';
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   document.getElementById('btn-step2-next').disabled=false;showToast('Foto berhasil diambil!','success');
@@ -2257,8 +2265,28 @@ async function saveAbsenToFirebase(record){
       const fileName = uid+'_'+record.type+'_'+record.date+'_'+timestamp+'.jpg';
       const storageRef = firebaseStorage.ref('absensi/'+uid+'/'+fileName);
 
-      // Konversi base64 ke blob
-      const base64Data = record.photoBase64.split(',')[1] || record.photoBase64;
+      // Konversi base64 ke blob, dengan kompresi ulang jika masih > 200KB
+      let photoSrc = record.photoBase64;
+      const MAX_UPLOAD_BYTES = 200 * 1024; // 200KB
+      // Cek ukuran estimasi dari base64
+      const estimatedBytes = Math.round((photoSrc.length * 3) / 4);
+      if(estimatedBytes > MAX_UPLOAD_BYTES){
+        // Re-compress via canvas
+        await new Promise(resolve=>{
+          const img2=new Image();
+          img2.onload=()=>{
+            const cv2=document.createElement('canvas');
+            let w2=img2.width,h2=img2.height;
+            const MAX2=640;
+            if(w2>MAX2||h2>MAX2){if(w2>h2){h2=Math.round(h2*(MAX2/w2));w2=MAX2;}else{w2=Math.round(w2*(MAX2/h2));h2=MAX2;}}
+            cv2.width=w2;cv2.height=h2;cv2.getContext('2d').drawImage(img2,0,0,w2,h2);
+            photoSrc=cv2.toDataURL('image/jpeg',.55);
+            resolve();
+          };
+          img2.src=photoSrc;
+        });
+      }
+      const base64Data = photoSrc.split(',')[1] || photoSrc;
       const byteChars = atob(base64Data);
       const byteArr = new Uint8Array(byteChars.length);
       for(let i=0;i<byteChars.length;i++) byteArr[i]=byteChars.charCodeAt(i);
