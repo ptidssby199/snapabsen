@@ -860,76 +860,43 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="absen-steps">
       <div class="absen-step active" id="step-ind-1"><div class="step-num">1</div><div class="step-label">Lokasi</div></div>
       <div class="step-line" id="step-line-1"></div>
-      <div class="absen-step" id="step-ind-2"><div class="step-num">2</div><div class="step-label">Pilih Absen</div></div>
+      <div class="absen-step" id="step-ind-2"><div class="step-num">2</div><div class="step-label">Selfie</div></div>
       <div class="step-line" id="step-line-2"></div>
-      <div class="absen-step" id="step-ind-3"><div class="step-num">3</div><div class="step-label">Verifikasi</div></div>
+      <div class="absen-step" id="step-ind-3"><div class="step-num">3</div><div class="step-label">Konfirmasi</div></div>
     </div>
     <div class="absen-step-content active" id="step-1">
       <div class="absen-step-title"><i class="fas fa-map-marker-alt"></i> Verifikasi Lokasi</div>
       <div id="absen-map"></div>
       <div class="map-info-row loading" id="map-status-row"><i class="fas fa-spinner fa-spin"></i><div><div style="font-weight:700">Mengambil lokasi GPS...</div></div></div>
       <div class="map-radius-note" id="map-radius-note"></div>
-      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Pilih Absen</button><button class="btn-cancel-modal" onclick="closeAbsenModal()">Batal</button></div>
+      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Selfie</button><button class="btn-cancel-modal" onclick="closeAbsenModal()">Batal</button></div>
     </div>
     <div class="absen-step-content" id="step-2">
-      <div class="absen-step-title"><i class="fas fa-hand-pointer"></i> Pilih Jenis Absen</div>
-      <div style="display:flex;gap:14px;margin-bottom:20px">
-        <button id="btn-pilih-masuk" onclick="pilihJenisAbsen('masuk')" style="flex:1;padding:20px 10px;background:#f0fdf4;border:2.5px solid #bbf7d0;border-radius:14px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s">
-          <div style="font-size:2rem;margin-bottom:8px">🟢</div>
-          <div style="font-weight:800;font-size:1rem;color:#16a34a">Absen Masuk</div>
-          <div style="font-size:.75rem;color:#86efac;margin-top:4px">Check-in ke kantor</div>
-        </button>
-        <button id="btn-pilih-keluar" onclick="pilihJenisAbsen('pulang')" style="flex:1;padding:20px 10px;background:#fff7ed;border:2.5px solid #fed7aa;border-radius:14px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s">
-          <div style="font-size:2rem;margin-bottom:8px">🟠</div>
-          <div style="font-weight:800;font-size:1rem;color:#ea580c">Absen Keluar</div>
-          <div style="font-size:.75rem;color:#fdba74;margin-top:4px">Check-out dari kantor</div>
-        </button>
+      <div class="absen-step-title"><i class="fas fa-camera"></i> Foto Selfie</div>
+      <div class="camera-area" id="camera-area">
+        <div class="cam-placeholder" id="cam-placeholder"><i class="fas fa-camera"></i><div style="font-size:.82rem;margin-top:6px">Tekan tombol untuk aktifkan kamera</div></div>
+        <video id="camera-video" style="display:none" autoplay playsinline muted></video>
+        <canvas id="camera-canvas" style="display:none"></canvas>
+        <div class="cam-overlay" style="display:none" id="cam-overlay"><div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div></div>
+        <div class="cam-photo-taken" id="cam-taken-badge" style="display:none"><i class="fas fa-check"></i> Foto diambil</div>
       </div>
-      <div id="pilih-absen-selected" style="display:none;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center;font-weight:700;color:#0891b2;font-size:.95rem"></div>
-      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step2-next" onclick="goToStep(3)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Verifikasi</button><button class="btn-back-step" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Kembali</button></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button onclick="startCamera()" style="flex:1;padding:10px;background:var(--primary-light);border:none;border-radius:8px;color:var(--primary);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-camera"></i> Aktifkan</button>
+        <button onclick="capturePhoto()" style="flex:1;padding:10px;background:var(--primary);border:none;border-radius:8px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-circle"></i> Ambil Foto</button>
+      </div>
+      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step2-next" onclick="goToStep(3)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Konfirmasi</button><button class="btn-back-step" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Kembali</button></div>
     </div>
     <div class="absen-step-content" id="step-3">
-      <div class="absen-step-title"><i class="fas fa-shield-alt"></i> Verifikasi Identitas</div>
-      <!-- Ringkasan absen -->
-      <div style="background:#f8fafc;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;border:1.5px solid var(--border)">
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><canvas id="thumb-canvas" width="50" height="50" style="border-radius:8px;border:2px solid var(--border);flex-shrink:0"></canvas><div><div style="font-weight:700;font-size:.88rem" id="confirm-name">—</div><div style="font-size:.75rem;color:var(--text-muted)" id="confirm-role">—</div><div style="font-size:.75rem;color:var(--text-muted);margin-top:2px" id="confirm-time"></div></div></div>
-        <div style="border-top:1px solid var(--border);padding-top:8px;font-size:.78rem;color:var(--text-muted)">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="fas fa-map-marker-alt" style="color:var(--primary);width:14px"></i><span id="confirm-loc">—</span></div>
+      <div class="absen-step-title"><i class="fas fa-check-circle"></i> Konfirmasi Absensi</div>
+      <div style="background:#f8fafc;border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;border:1.5px solid var(--border)">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><canvas id="thumb-canvas" width="60" height="60" style="border-radius:8px;border:2px solid var(--border);flex-shrink:0"></canvas><div><div style="font-weight:700;font-size:.9rem" id="confirm-name">—</div><div style="font-size:.78rem;color:var(--text-muted)" id="confirm-role">—</div><div style="font-size:.78rem;color:var(--text-muted);margin-top:3px" id="confirm-time"></div></div></div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;font-size:.8rem;color:var(--text-muted)">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><i class="fas fa-map-marker-alt" style="color:var(--primary);width:14px"></i><span id="confirm-loc">—</span></div>
           <div style="display:flex;align-items:center;gap:6px" id="confirm-radius-row"><i class="fas fa-circle-dot" style="color:var(--green);width:14px"></i><span id="confirm-radius-txt">—</span></div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:4px" id="confirm-jenis-row"><i class="fas fa-sign-in-alt" style="color:var(--primary);width:14px"></i><span id="confirm-jenis-txt" style="font-weight:700;color:var(--primary)">—</span></div>
         </div>
       </div>
-      <!-- Fingerprint section -->
-      <div id="verif-fingerprint-section">
-        <div style="text-align:center;padding:18px 0 10px">
-          <div style="font-size:3rem;margin-bottom:8px">👆</div>
-          <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">Verifikasi Fingerprint</div>
-          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:16px">Tekan tombol di bawah lalu tempelkan jari Anda</div>
-          <button id="btn-do-fingerprint" onclick="doFingerprintVerif()" style="width:100%;padding:14px;background:var(--primary);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint</button>
-          <button onclick="switchToSelfieVerif()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1.5px dashed var(--border);border-radius:10px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.82rem"><i class="fas fa-camera"></i> Fingerprint tidak tersedia? Gunakan Selfie</button>
-        </div>
-      </div>
-      <!-- Selfie fallback section (hidden by default) -->
-      <div id="verif-selfie-section" style="display:none">
-        <div style="font-size:.82rem;color:var(--text-muted);text-align:center;margin-bottom:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px"><i class="fas fa-info-circle" style="color:#f59e0b"></i> Menggunakan foto selfie sebagai verifikasi</div>
-        <div class="camera-area" id="camera-area">
-          <div class="cam-placeholder" id="cam-placeholder"><i class="fas fa-camera"></i><div style="font-size:.82rem;margin-top:6px">Tekan tombol untuk aktifkan kamera</div></div>
-          <video id="camera-video" style="display:none" autoplay playsinline muted></video>
-          <canvas id="camera-canvas" style="display:none"></canvas>
-          <div class="cam-overlay" style="display:none" id="cam-overlay"><div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div></div>
-          <div class="cam-photo-taken" id="cam-taken-badge" style="display:none"><i class="fas fa-check"></i> Foto diambil</div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button onclick="startCamera()" style="flex:1;padding:10px;background:var(--primary-light);border:none;border-radius:8px;color:var(--primary);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-camera"></i> Aktifkan</button>
-          <button onclick="capturePhoto()" style="flex:1;padding:10px;background:var(--primary);border:none;border-radius:8px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-circle"></i> Ambil Foto</button>
-        </div>
-        <button onclick="switchToFingerprintVerif()" style="width:100%;margin-bottom:10px;padding:8px;background:transparent;border:1.5px dashed var(--border);border-radius:8px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.78rem"><i class="fas fa-fingerprint"></i> Coba lagi dengan Fingerprint</button>
-      </div>
-      <!-- Status verifikasi -->
-      <div id="verif-status" style="display:none;text-align:center;padding:12px;border-radius:10px;margin-bottom:12px;font-weight:700;font-size:.9rem"></div>
-      <!-- Submit button -->
       <div style="padding:0 0 16px">
-        <button class="btn-masuk" id="btn-submit-absen" onclick="doSubmitAbsen()" disabled style="width:100%;margin-bottom:8px;justify-content:center;opacity:.5"><i class="fas fa-paper-plane"></i> <span id="btn-submit-label">Submit Absen</span></button>
+        <div style="display:flex;gap:10px;margin-bottom:8px"><button class="btn-masuk" onclick="submitAbsen('masuk')"><i class="fas fa-sign-in-alt"></i> Absen Masuk</button><button class="btn-pulang" onclick="submitAbsen('pulang')"><i class="fas fa-sign-out-alt"></i> Absen Pulang</button></div>
         <button class="btn-back-step" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Kembali</button>
       </div>
     </div>
@@ -1328,121 +1295,15 @@ function openAbsenModal(){
 function closeAbsenModal(){
   document.getElementById('modal-absen').classList.remove('open');
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;selectedAbsenType=null;verifMethod=null;verifDone=false;
+  resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;
 }
-let selectedAbsenType=null; // 'masuk' atau 'pulang'
-let verifMethod=null; // 'fingerprint' atau 'selfie'
-let verifDone=false;
-
 function goToStep(n){
   document.querySelectorAll('.absen-step-content').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-'+n).classList.add('active');
   [1,2,3].forEach(i=>{const el=document.getElementById('step-ind-'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});
   [1,2].forEach(i=>document.getElementById('step-line-'+i).classList.toggle('done',i<n));
-  if(n===3){buildConfirmSummary();resetVerifState();}
-}
-
-function pilihJenisAbsen(type){
-  selectedAbsenType=type;
-  // Visual feedback
-  const btnM=document.getElementById('btn-pilih-masuk');
-  const btnK=document.getElementById('btn-pilih-keluar');
-  btnM.style.borderColor=type==='masuk'?'#16a34a':'#bbf7d0';
-  btnM.style.background=type==='masuk'?'#dcfce7':'#f0fdf4';
-  btnK.style.borderColor=type==='pulang'?'#ea580c':'#fed7aa';
-  btnK.style.background=type==='pulang'?'#ffedd5':'#fff7ed';
-  const sel=document.getElementById('pilih-absen-selected');
-  sel.style.display='block';
-  sel.innerHTML=type==='masuk'?'✅ Dipilih: <strong>Absen Masuk</strong>':'✅ Dipilih: <strong>Absen Keluar</strong>';
-  document.getElementById('btn-step2-next').disabled=false;
-}
-
-function resetVerifState(){
-  verifMethod=null;verifDone=false;
-  document.getElementById('verif-fingerprint-section').style.display='block';
-  document.getElementById('verif-selfie-section').style.display='none';
-  const vstatus=document.getElementById('verif-status');
-  vstatus.style.display='none';vstatus.textContent='';
-  const btnSubmit=document.getElementById('btn-submit-absen');
-  btnSubmit.disabled=true;btnSubmit.style.opacity='.5';
-  // Stop camera if running
-  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  resetCameraUI();capturedPhoto=null;
-  // Update submit label
-  const lbl=document.getElementById('btn-submit-label');
-  if(lbl)lbl.textContent='Submit Absen '+(selectedAbsenType==='masuk'?'Masuk':'Keluar');
-}
-
-async function doFingerprintVerif(){
-  const btn=document.getElementById('btn-do-fingerprint');
-  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
-  try{
-    // Cek WebAuthn/biometric availability
-    if(!window.PublicKeyCredential){throw new Error('not_supported');}
-    const available=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    if(!available){throw new Error('not_available');}
-    // Request biometric/fingerprint
-    const credential=await navigator.credentials.get({
-      publicKey:{
-        challenge:new Uint8Array(32),
-        userVerification:'required',
-        timeout:60000,
-        rpId:location.hostname||'localhost'
-      }
-    });
-    if(credential){
-      verifMethod='fingerprint';verifDone=true;
-      showVerifStatus('success','✅ Fingerprint terverifikasi!');
-      const btnSubmit=document.getElementById('btn-submit-absen');
-      btnSubmit.disabled=false;btnSubmit.style.opacity='1';
-      btnSubmit.style.background='#16a34a';
-    }
-  }catch(err){
-    btn.disabled=false;btn.innerHTML='<i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint';
-    if(err.message==='not_supported'||err.message==='not_available'){
-      showVerifStatus('warning','⚠️ Fingerprint tidak tersedia di perangkat ini. Silakan gunakan Selfie.');
-      setTimeout(switchToSelfieVerif,1500);
-    }else if(err.name==='NotAllowedError'){
-      showVerifStatus('error','❌ Verifikasi dibatalkan. Coba lagi.');
-    }else{
-      showVerifStatus('warning','⚠️ Fingerprint tidak berhasil. Gunakan Selfie sebagai alternatif.');
-      setTimeout(switchToSelfieVerif,1500);
-    }
-  }
-}
-
-function showVerifStatus(type,msg){
-  const el=document.getElementById('verif-status');
-  el.style.display='block';
-  el.style.background=type==='success'?'#f0fdf4':type==='warning'?'#fffbeb':'#fef2f2';
-  el.style.border='1.5px solid '+(type==='success'?'#bbf7d0':type==='warning'?'#fde68a':'#fecaca');
-  el.style.color=type==='success'?'#16a34a':type==='warning'?'#b45309':'#dc2626';
-  el.textContent=msg;
-}
-
-function switchToSelfieVerif(){
-  document.getElementById('verif-fingerprint-section').style.display='none';
-  document.getElementById('verif-selfie-section').style.display='block';
-  const vstatus=document.getElementById('verif-status');vstatus.style.display='none';
-  setTimeout(startCamera,300);
-}
-
-function switchToFingerprintVerif(){
-  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  resetCameraUI();capturedPhoto=null;
-  document.getElementById('verif-fingerprint-section').style.display='block';
-  document.getElementById('verif-selfie-section').style.display='none';
-  const vstatus=document.getElementById('verif-status');vstatus.style.display='none';
-  const btnSubmit=document.getElementById('btn-submit-absen');
-  btnSubmit.disabled=true;btnSubmit.style.opacity='.5';
-  document.getElementById('btn-do-fingerprint').disabled=false;
-  document.getElementById('btn-do-fingerprint').innerHTML='<i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint';
-}
-
-async function doSubmitAbsen(){
-  if(!selectedAbsenType){showToast('Pilih jenis absen dulu','warning');return;}
-  if(!verifDone&&!capturedPhoto){showToast('Selesaikan verifikasi dulu','warning');return;}
-  await submitAbsen(selectedAbsenType);
+  if(n===2)setTimeout(startCamera,300);
+  if(n===3)buildConfirmSummary();
 }
 function initAbsenMap(){
   setTimeout(()=>{
@@ -1700,16 +1561,7 @@ function capturePhoto(){
   capturedPhoto=c.toDataURL('image/jpeg',.65);c.style.display='block';v.style.display='none';
   document.getElementById('cam-overlay').style.display='none';document.getElementById('cam-taken-badge').style.display='block';
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  // Jika di step verifikasi selfie, enable submit button
-  const step3Active=document.getElementById('step-3').classList.contains('active');
-  if(step3Active){
-    verifMethod='selfie';verifDone=true;
-    showVerifStatus('success','✅ Foto selfie berhasil diambil!');
-    const btnSubmit=document.getElementById('btn-submit-absen');
-    btnSubmit.disabled=false;btnSubmit.style.opacity='1';
-    btnSubmit.style.background='#16a34a';
-  }
-  showToast('Foto berhasil diambil!','success');
+  document.getElementById('btn-step2-next').disabled=false;showToast('Foto berhasil diambil!','success');
 }
 function resetCameraUI(){
   document.getElementById('camera-video').style.display='none';document.getElementById('camera-canvas').style.display='none';
@@ -1726,12 +1578,6 @@ function buildConfirmSummary(){
   if(currentLocation)document.getElementById('confirm-loc').textContent=currentLocation.lat.toFixed(5)+', '+currentLocation.lng.toFixed(5)+' (±'+Math.round(currentLocation.acc||0)+'m)';
   if(officeConfig)document.getElementById('confirm-radius-txt').textContent='Dalam zona '+(officeConfig.nama||'kantor')+' (radius '+officeConfig.radius+'m)';
   else document.getElementById('confirm-radius-row').innerHTML='<i class="fas fa-info-circle" style="color:var(--yellow);width:14px"></i><span style="color:var(--yellow)">Radius belum dikonfigurasi</span>';
-  // Tampilkan jenis absen yang dipilih
-  const jenisEl=document.getElementById('confirm-jenis-txt');
-  if(jenisEl&&selectedAbsenType){jenisEl.textContent=selectedAbsenType==='masuk'?'Absen Masuk':'Absen Keluar';jenisEl.style.color=selectedAbsenType==='masuk'?'var(--green)':'var(--accent)';}
-  // Update submit label
-  const lbl=document.getElementById('btn-submit-label');
-  if(lbl)lbl.textContent='Submit '+(selectedAbsenType==='masuk'?'Absen Masuk':'Absen Keluar');
   if(capturedPhoto){const th=document.getElementById('thumb-canvas');const img=new Image();img.src=capturedPhoto;img.onload=()=>th.getContext('2d').drawImage(img,0,0,60,60);}
 }
 // Debug logger — tampil di layar HP
