@@ -568,7 +568,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         </div>
         <input class="lap-search" type="text" id="lap-nama-filter" placeholder="Cari nama karyawan..." oninput="filterLaporanTable()">
         <button class="btn-laporan-load" onclick="loadLaporan()"><i class="fas fa-search"></i> Tampilkan Laporan</button>
-        <button class="btn-export-excel" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Export ke Excel (.csv)</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-export-excel" style="flex:1" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Export CSV</button>
+          <button class="btn-export-excel" style="flex:1;background:var(--primary-light);border-color:var(--primary);color:var(--primary)" onclick="exportHtmlFoto()"><i class="fas fa-images"></i> Export + Foto</button>
+        </div>
       </div>
       <div class="rekap-stats" id="rekap-stats" style="display:none;grid-template-columns:repeat(5,1fr)">
         <div class="rekap-stat-card"><div class="rs-val" id="rs-pegawai" style="color:var(--primary)">0</div><div class="rs-label">Karyawan</div></div>
@@ -1923,7 +1926,7 @@ function exportExcel(){
   const bulan=document.getElementById('lap-bulan'),tahun=document.getElementById('lap-tahun').value;
   const namaBulan=bulan.options[bulan.selectedIndex].text;
   const grouped={};
-  laporanData.forEach(r=>{const key=(r.uid||'x')+'|'+(r.date||'');if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat,lng:r.lng};if(r.type==='masuk'){grouped[key].masuk=r.time;grouped[key].lat=r.lat;grouped[key].lng=r.lng;}if(r.type==='pulang')grouped[key].pulang=r.time;grouped[key].uid=r.uid;});
+  laporanData.forEach(r=>{const key=(r.uid||'x')+'|'+(r.date||'');if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat,lng:r.lng,photoMasuk:'',photoMasukIsBase64:false};if(r.type==='masuk'){grouped[key].masuk=r.time;grouped[key].lat=r.lat;grouped[key].lng=r.lng;const foto=r.photoURL||r.photoBase64||'';if(foto){grouped[key].photoMasuk=foto;grouped[key].photoMasukIsBase64=!r.photoURL&&!!r.photoBase64;}}if(r.type==='pulang')grouped[key].pulang=r.time;grouped[key].uid=r.uid;});
   const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','Foto Masuk (URL/Base64)'];
@@ -1936,9 +1939,8 @@ function exportExcel(){
     const batasExp = t2 ? t2.batas : '—';
     const telatExp = t2 ? (t2.telat ? '+'+t2.display : 'Tepat Waktu') : '—';
     const st=r.masuk==='—'?'Tidak Hadir':r.pulang==='—'?'Belum Pulang':'Hadir';
-    // Cari foto dari laporanData (photoURL jika ada, fallback ke photoBase64)
-    const srcRows=laporanData.filter(x=>x.uid===r.uid&&x.date===r.tanggal&&x.type==='masuk');
-    const photoURLExp=srcRows.length?(srcRows[0].photoURL||srcRows[0].photoBase64||''):'';
+    // Ambil foto dari grouped (sudah di-set saat iterasi laporanData)
+    const photoURLExp=r.photoMasuk||'';
     csvRows.push([i+1,r.nama,tgl,shiftNamaExp,batasExp,r.masuk,telatExp,r.pulang,dur,st,r.lat||'',r.lng||'',photoURLExp].join(';'));
   });
   csvRows.push('');csvRows.push(['RINGKASAN','','','','','','','',''].join(';'));
@@ -1955,6 +1957,106 @@ function exportExcel(){
   a.href=url;a.download='Rekap_Absensi_'+namaBulan+'_'+tahun+'.csv';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   showToast('Export berhasil! Buka file .csv dengan Excel','success');
+}
+
+function exportHtmlFoto(){
+  if(!laporanData.length){showToast('Muat laporan dulu sebelum export','warning');return;}
+  const bulan=document.getElementById('lap-bulan'),tahun=document.getElementById('lap-tahun').value;
+  const namaBulan=bulan.options[bulan.selectedIndex].text;
+  const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  // Group data
+  const grouped={};
+  laporanData.forEach(r=>{
+    const key=(r.uid||'x')+'|'+(r.date||'');
+    if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat||'',lng:r.lng||'',foto:''};
+    if(r.type==='masuk'){
+      grouped[key].masuk=r.time;
+      grouped[key].lat=r.lat||'';
+      grouped[key].lng=r.lng||'';
+      const f=r.photoURL||r.photoBase64||'';
+      if(f)grouped[key].foto=f;
+    }
+    if(r.type==='pulang')grouped[key].pulang=r.time;
+    grouped[key].uid=r.uid;
+  });
+  const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
+  // Build HTML
+  let tableRows='';
+  rows.forEach((r,i)=>{
+    const d=new Date(r.tanggal||'');
+    const tgl=isNaN(d)?r.tanggal:d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
+    let dur='—';
+    if(r.masuk!=='—'&&r.pulang!=='—'){
+      const[mh,mm]=r.masuk.split(':').map(Number),[ph,pm]=r.pulang.split(':').map(Number),mn=(ph*60+pm)-(mh*60+mm);
+      if(mn>0)dur=Math.floor(mn/60)+'j '+(mn%60)+'m';
+    }
+    const t2=r.masuk!=='—'?hitungTelat(r.masuk,r.uid||'',r.tanggal||''):null;
+    const shiftNama=t2?t2.shiftNama:'—';
+    const batas=t2?t2.batas:'—';
+    const telat=t2?(t2.telat?'<span style="color:#dc2626;font-weight:700">+'+t2.display+'</span>':'<span style="color:#16a34a">Tepat Waktu</span>'):'—';
+    const st=r.masuk==='—'?'<span style="color:#dc2626">Tidak Hadir</span>':r.pulang==='—'?'<span style="color:#d97706">Belum Pulang</span>':'<span style="color:#16a34a">Hadir</span>';
+    const fotoCell=r.foto
+      ?'<img src="'+r.foto+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer" onclick="this.style.width=this.style.width===\'80px\'?\'240px\':\'80px\'" title="Klik untuk perbesar">'
+      :'<span style="color:#94a3b8;font-size:.75rem">Tidak ada foto</span>';
+    const mapCell=r.lat&&r.lng
+      ?'<a href="https://maps.google.com/?q='+r.lat+','+r.lng+'" target="_blank" style="color:#0891b2;font-size:.75rem">📍 Lihat</a>'
+      :'—';
+    tableRows+=`<tr>
+      <td style="text-align:center">${i+1}</td>
+      <td><strong>${r.nama}</strong></td>
+      <td style="white-space:nowrap">${tgl}</td>
+      <td>${shiftNama}</td>
+      <td style="text-align:center">${batas}</td>
+      <td style="text-align:center;font-weight:700">${r.masuk}</td>
+      <td style="text-align:center">${telat}</td>
+      <td style="text-align:center">${r.pulang}</td>
+      <td style="text-align:center">${dur}</td>
+      <td style="text-align:center">${st}</td>
+      <td style="text-align:center">${fotoCell}</td>
+      <td style="text-align:center">${mapCell}</td>
+    </tr>`;
+  });
+  const hadir=rows.filter(r=>r.masuk!=='—').length;
+  const html=`<!DOCTYPE html>
+<html lang="id"><head><meta charset="UTF-8"><title>Rekap Absensi ${namaBulan} ${tahun}</title>
+<style>
+  body{font-family:'Segoe UI',Arial,sans-serif;margin:0;padding:20px;background:#f8fafc;color:#1e293b}
+  h1{color:#7c3aed;font-size:1.4rem;margin-bottom:4px}
+  .subtitle{color:#64748b;font-size:.85rem;margin-bottom:20px}
+  .stats{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+  .stat{background:#fff;border-radius:10px;padding:12px 20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08);min-width:100px}
+  .stat .val{font-size:1.5rem;font-weight:800;color:#7c3aed}
+  .stat .lbl{font-size:.75rem;color:#64748b;margin-top:2px}
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:.82rem}
+  th{background:#7c3aed;color:#fff;padding:10px 8px;text-align:left;white-space:nowrap}
+  td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:nth-child(even) td{background:#fafbff}
+  .note{font-size:.75rem;color:#94a3b8;margin-top:12px}
+</style></head><body>
+<h1>📋 Rekap Absensi — ${namaBulan} ${tahun}</h1>
+<p class="subtitle">Diekspor pada ${new Date().toLocaleString('id-ID')} • Klik foto untuk perbesar</p>
+<div class="stats">
+  <div class="stat"><div class="val">${rows.length}</div><div class="lbl">Total Record</div></div>
+  <div class="stat"><div class="val" style="color:#16a34a">${hadir}</div><div class="lbl">Hadir</div></div>
+  <div class="stat"><div class="val" style="color:#dc2626">${rows.filter(r=>r.masuk==='—').length}</div><div class="lbl">Tidak Hadir</div></div>
+  <div class="stat"><div class="val" style="color:#7c3aed">${rows.filter(r=>r.foto).length}</div><div class="lbl">Ada Foto</div></div>
+</div>
+<table>
+  <thead><tr>
+    <th>No</th><th>Nama</th><th>Tanggal</th><th>Shift</th><th>Batas</th>
+    <th>Masuk</th><th>Terlambat</th><th>Pulang</th><th>Durasi</th><th>Status</th>
+    <th>Foto Selfie</th><th>Lokasi</th>
+  </tr></thead>
+  <tbody>${tableRows}</tbody>
+</table>
+<p class="note">* Foto dapat diklik untuk memperbesar. Link lokasi membuka Google Maps.</p>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='Rekap_Foto_'+namaBulan+'_'+tahun+'.html';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast('Export HTML + Foto berhasil! Buka file .html di browser','success');
 }
 
 // GANTI PASSWORD
