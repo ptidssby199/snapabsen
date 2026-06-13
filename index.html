@@ -1130,7 +1130,7 @@ function doLogout(){
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   showToast('Anda telah keluar');
 }
-document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+window.addEventListener('load',()=>{const lp=document.getElementById('login-pass');if(lp)lp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});});
 
 // ROLE UI
 function applyRoleUI(){
@@ -1195,7 +1195,7 @@ function switchTab(name){
 // LOAD DATA
 async function loadMyAbsensiToday(){
   if(!firebaseDb||!currentUser)return;
-  const today=new Date().toISOString().split('T')[0];
+  const _n=new Date();const today=`${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
   try{
     const snap=await firebaseDb.collection('absensi').where('uid','==',currentUser.uid).where('date','==',today).get();
     const c=document.getElementById('activity-list');
@@ -1608,7 +1608,7 @@ async function submitAbsen(type){
   dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
     await saveAbsenToFirebase({
-      type, time:t, date:now.toISOString().split('T')[0],
+      type, time:t, date:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
       lat:currentLocation?.lat, lng:currentLocation?.lng,
       accuracy:currentLocation?.acc,
       fakeGpsScore:currentLocation?.fakeScore||0,
@@ -2854,7 +2854,7 @@ function renderKalender(uid, bulan, tahun) {
   const uJadwal = jadwalData[uid] || {};
   const firstDay = new Date(tahun, bulan-1, 1).getDay();
   const daysInMonth = new Date(tahun, bulan, 0).getDate();
-  const today = new Date().toISOString().split('T')[0];
+  const _td=new Date();const today=`${_td.getFullYear()}-${String(_td.getMonth()+1).padStart(2,'0')}-${String(_td.getDate()).padStart(2,'0')}`;
   let html = '<div class="jadwal-grid">';
   HARI.forEach(h => { html += `<div class="jadwal-day-header">${h}</div>`; });
   for (let i = 0; i < firstDay; i++) html += '<div class="jadwal-day jd-empty"></div>';
@@ -3004,7 +3004,7 @@ async function salinJadwal(uid) {
 // --- JADWAL HARI INI untuk karyawan (di beranda) ---
 async function loadMyJadwalHariIni() {
   if (!firebaseDb || !currentUser) return;
-  const today = new Date().toISOString().split('T')[0];
+  const _tj=new Date();const today=`${_tj.getFullYear()}-${String(_tj.getMonth()+1).padStart(2,'0')}-${String(_tj.getDate()).padStart(2,'0')}`;
   const bulanKey = today.substring(0, 7);
   try {
     const snap = await firebaseDb.collection('jadwal')
