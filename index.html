@@ -1013,12 +1013,14 @@ window.addEventListener('load',()=>{
   const oc=localStorage.getItem('office_config');
   if(oc){
     officeConfig=JSON.parse(oc);
+    // Override selalu dengan koordinat terkunci
+    officeConfig={...officeConfig,lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama:FIXED_NAMA};
     updateRadiusDesc();
     // Juga load dari Firestore jika ada (sinkron antar device)
     if(firebaseDb){
       firebaseDb.collection('settings').doc('office').get().then(doc=>{
         if(doc.exists){
-          officeConfig={...officeConfig,...doc.data()};
+          officeConfig={...officeConfig,...doc.data(),lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama:FIXED_NAMA};
           localStorage.setItem('office_config',JSON.stringify(officeConfig));
           updateRadiusDesc();
         }
@@ -1600,6 +1602,14 @@ function dbgLog(msg){
   box.scrollTop=box.scrollHeight;
 }
 async function submitAbsen(type){
+  // Validasi ganda koordinat kantor sebelum simpan
+  if(currentLocation){
+    const distCheck=getDistance(currentLocation.lat,currentLocation.lng,FIXED_LAT,FIXED_LNG);
+    if(distCheck>FIXED_RADIUS){
+      showToast('Gagal: Anda di luar zona absensi kantor ('+Math.round(distCheck)+' m dari kantor)','error');
+      return;
+    }
+  }
   const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   // Disable semua tombol absen agar tidak double-submit
   const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
@@ -2098,33 +2108,31 @@ async function savePassword(){
 // RADIUS
 function openRadiusModal(){if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat mengatur radius','error');return;}(function(){const _m=document.getElementById('modal-radius');_m.style.display='';_m.classList.add('open');})();setTimeout(initRadiusMap,200);}
 function closeRadiusModal(){document.getElementById('modal-radius').classList.remove('open');}
+// ===== KOORDINAT KANTOR TERKUNCI =====
+const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20,FIXED_NAMA='Jalan Pucang Anom Timur III No. 12';
 function initRadiusMap(){
   if(radiusMapObj){radiusMapObj.invalidateSize();return;}
-  const DEFAULT_LAT=-7.275700,DEFAULT_LNG=112.762900,DEFAULT_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
-  const dLat=officeConfig?.lat||DEFAULT_LAT,dLng=officeConfig?.lng||DEFAULT_LNG,dR=officeConfig?.radius||200;
   radiusMapObj=L.map('radius-map',{zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(radiusMapObj);
-  radiusMapObj.setView([dLat,dLng],16);
-  radiusMarker=L.marker([dLat,dLng],{draggable:true}).addTo(radiusMapObj);
-  radiusCircleObj=L.circle([dLat,dLng],{radius:dR,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2}).addTo(radiusMapObj);
-  radiusMarker.on('dragend',()=>{const p=radiusMarker.getLatLng();radiusCircleObj.setLatLng([p.lat,p.lng]);document.getElementById('rk-lat').value=p.lat.toFixed(6);document.getElementById('rk-lng').value=p.lng.toFixed(6);});
-  radiusMapObj.on('click',e=>{radiusMarker.setLatLng(e.latlng);radiusCircleObj.setLatLng(e.latlng);document.getElementById('rk-lat').value=e.latlng.lat.toFixed(6);document.getElementById('rk-lng').value=e.latlng.lng.toFixed(6);});
-  document.getElementById('rk-lat').value=dLat.toFixed(6);document.getElementById('rk-lng').value=dLng.toFixed(6);
-  document.getElementById('rk-radius').value=dR;
-  document.getElementById('rk-nama').value=officeConfig?.nama||'';
-  // Pre-fill alamat jika sudah tersimpan
+  radiusMapObj.setView([FIXED_LAT,FIXED_LNG],18);
+  radiusMarker=L.marker([FIXED_LAT,FIXED_LNG],{draggable:false}).addTo(radiusMapObj);
+  radiusCircleObj=L.circle([FIXED_LAT,FIXED_LNG],{radius:FIXED_RADIUS,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2}).addTo(radiusMapObj);
+  const latEl=document.getElementById('rk-lat'),lngEl=document.getElementById('rk-lng'),rEl=document.getElementById('rk-radius'),nEl=document.getElementById('rk-nama');
+  if(latEl){latEl.value=FIXED_LAT.toFixed(6);latEl.readOnly=true;latEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
+  if(lngEl){lngEl.value=FIXED_LNG.toFixed(6);lngEl.readOnly=true;lngEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
+  if(rEl){rEl.value=FIXED_RADIUS;rEl.readOnly=true;rEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
+  if(nEl){nEl.value=FIXED_NAMA;nEl.readOnly=true;nEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
   setTimeout(prefillOfficeAddress, 100);
 }
-function updateRadiusSlider(){let r=parseInt(document.getElementById('rk-radius').value)||200;if(r<3)r=3;if(r>2000)r=2000;if(radiusCircleObj)radiusCircleObj.setRadius(r);}
-function getOfficeLocation(){navigator.geolocation.getCurrentPosition(p=>{const la=p.coords.latitude,lo=p.coords.longitude;radiusMapObj.setView([la,lo],17);radiusMarker.setLatLng([la,lo]);radiusCircleObj.setLatLng([la,lo]);document.getElementById('rk-lat').value=la.toFixed(6);document.getElementById('rk-lng').value=lo.toFixed(6);showToast('GPS ditemukan!','success');},()=>showToast('Gagal GPS','error'));}
+function updateRadiusSlider(){/* radius terkunci, tidak bisa diubah */if(radiusCircleObj)radiusCircleObj.setRadius(FIXED_RADIUS);}
+function getOfficeLocation(){showToast('Koordinat kantor sudah terkunci','info');}
 function saveRadius(){
-  const nama=document.getElementById('rk-nama').value.trim()||'Kantor',lat=parseFloat(document.getElementById('rk-lat').value),lng=parseFloat(document.getElementById('rk-lng').value),radius=parseInt(document.getElementById('rk-radius').value);
-  if(isNaN(lat)||isNaN(lng)){showToast('Koordinat tidak valid','error');return;}
-  const addrEl=document.getElementById('rk-selected-addr-text');
-  const address=(addrEl&&addrEl.textContent.trim())||document.getElementById('rk-alamat').value.trim()||'';
+  // Koordinat terkunci — selalu gunakan FIXED_LAT/LNG/RADIUS
+  const nama=FIXED_NAMA,lat=FIXED_LAT,lng=FIXED_LNG,radius=FIXED_RADIUS;
+  const address='Jalan Pucang Anom Timur III No. 12, Surabaya';
   officeConfig={lat,lng,radius,nama,address};localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
-  updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
+  updateRadiusDesc();closeRadiusModal();showToast('Konfigurasi kantor tersimpan (radius '+radius+' m)','success');
 }
 function updateRadiusDesc(){
   const el=document.getElementById('radius-desc');
