@@ -938,7 +938,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <div style="font-weight:700;margin-bottom:2px"><i class="fas fa-map-marker-alt" style="margin-right:5px"></i><span id="rk-selected-addr-text"></span></div>
       </div>
       <div class="rk-group"><label>Nama Lokasi Kantor</label><input class="rk-input" type="text" id="rk-nama" placeholder="Kantor Pusat Surabaya"></div>
-      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-slider-row"><input type="range" id="rk-radius" min="50" max="2000" step="50" value="200" oninput="updateRadiusSlider()"><div class="rk-radius-val"><span id="rk-radius-val">200</span> m</div></div></div>
+      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-slider-row"><input type="range" id="rk-radius" min="3" max="2000" step="1" value="200" oninput="updateRadiusSlider()"><div class="rk-radius-val"><span id="rk-radius-val">200</span> m</div></div></div>
       <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" readonly style="background:#f8fafc"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" readonly style="background:#f8fafc"></div></div>
       <button class="btn-rk-lokasi" onclick="getOfficeLocation()"><i class="fas fa-crosshairs"></i> Gunakan Lokasi Saya</button>
       <button class="btn-rk-save" onclick="saveRadius()"><i class="fas fa-save"></i> Simpan Konfigurasi</button>
@@ -996,6 +996,7 @@ let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,l
 let absenMap=null,absenMarker=null,absenCircle=null;
 let radiusMapObj=null,radiusMarker=null,radiusCircleObj=null;
 let officeConfig=null,firebaseConfig=null,firebaseDb=null,firebaseAuth=null,firebaseUser=null;
+var firebaseStorage=null;
 let avatarDataUrl=null,historyData=[],laporanData=[];
 const ROLE_LEVEL={karyawan:1,manager:2,admin:3};
 function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];}
@@ -1054,8 +1055,22 @@ async function doLogin(){
     if(fbUser){
       firebaseUser=fbUser;
       const prof=await fbGetProfile(fbUser.uid);
-      currentUser={email:fbUser.email,uid:fbUser.uid,name:prof?.name||u.split('@')[0],userRole:prof?.userRole||'karyawan',role:prof?.role||'Karyawan',nik:prof?.nik||'',hp:prof?.hp||'',kantor:prof?.kantor||'',join:prof?.join||'',departemen:prof?.departemen||'',avatar:prof?.avatar||null};
-      if(!prof)await fbSaveProfile(fbUser.uid,{email:fbUser.email,name:currentUser.name,userRole:'karyawan',role:'Karyawan',createdAt:new Date().toISOString()});
+      currentUser={email:fbUser.email,uid:fbUser.uid,name:prof?.name||u.split('@')[0],userRole:(prof&&prof.userRole)?prof.userRole:'karyawan',role:(prof&&prof.role)?prof.role:'Karyawan',nik:prof?.nik||'',hp:prof?.hp||'',kantor:prof?.kantor||'',join:prof?.join||'',departemen:prof?.departemen||'',avatar:prof?.avatar||null};
+      // Hanya buat profil baru jika belum ada — JANGAN overwrite role yang sudah ada
+      if(!prof){
+        await fbSaveProfile(fbUser.uid,{
+          email:fbUser.email, name:currentUser.name,
+          userRole:'karyawan', role:'Karyawan',
+          createdAt:new Date().toISOString()
+        });
+      } else {
+        // Update email/name saja jika berubah, JANGAN ubah userRole
+        const updates={};
+        if(prof.email!==fbUser.email) updates.email=fbUser.email;
+        if(Object.keys(updates).length>0){
+          await firebaseDb.collection('users').doc(fbUser.uid).set(updates,{merge:true});
+        }
+      }
       finishLogin();
     }
   } else {
@@ -1961,6 +1976,8 @@ function getOfficeLocation(){navigator.geolocation.getCurrentPosition(p=>{const 
 function saveRadius(){
   const nama=document.getElementById('rk-nama').value.trim()||'Kantor',lat=parseFloat(document.getElementById('rk-lat').value),lng=parseFloat(document.getElementById('rk-lng').value),radius=parseInt(document.getElementById('rk-radius').value);
   if(isNaN(lat)||isNaN(lng)){showToast('Koordinat tidak valid','error');return;}
+  const addrEl=document.getElementById('rk-selected-addr-text');
+  const address=(addrEl&&addrEl.textContent.trim())||document.getElementById('rk-alamat').value.trim()||'';
   officeConfig={lat,lng,radius,nama,address};localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
   updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
@@ -2070,7 +2087,10 @@ async function saveEditProfil(){
   const nama=document.getElementById('ep-nama').value.trim();if(!nama){showToast('Nama harus diisi','error');return;}
   const btn=document.querySelector('.btn-ep-save');btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...';btn.disabled=true;
   currentUser.name=nama;currentUser.role=document.getElementById('ep-jabatan').value.trim()||currentUser.role;currentUser.nik=document.getElementById('ep-nik').value.trim();currentUser.hp=document.getElementById('ep-hp').value.trim();currentUser.kantor=document.getElementById('ep-kantor').value.trim();currentUser.join=document.getElementById('ep-join').value;currentUser.departemen=document.getElementById('ep-departemen').value;
-  if(hasRole('admin'))currentUser.userRole=document.getElementById('ep-role-select').value;
+  // Role hanya bisa diubah admin, dan hanya untuk diri sendiri jika perlu
+  if(hasRole('admin') && document.getElementById('ep-role-select').value){
+    currentUser.userRole=document.getElementById('ep-role-select').value;
+  }
   if(avatarDataUrl)currentUser.avatar=avatarDataUrl;
   const emailBaru=document.getElementById('ep-email').value.trim();
   if(firebaseAuth&&firebaseUser&&emailBaru&&emailBaru!==firebaseUser.email){
@@ -2078,7 +2098,20 @@ async function saveEditProfil(){
     catch(e){showToast(e.code==='auth/requires-recent-login'?'Login ulang untuk ganti email':'Gagal update email: '+e.message,'error');btn.innerHTML='<i class="fas fa-save"></i> Simpan';btn.disabled=false;return;}
   }else if(emailBaru)currentUser.email=emailBaru;
   if(firebaseDb&&firebaseUser){
-    const pd={name:currentUser.name,role:currentUser.role,nik:currentUser.nik,hp:currentUser.hp,kantor:currentUser.kantor,join:currentUser.join,departemen:currentUser.departemen,email:currentUser.email,userRole:currentUser.userRole,updatedAt:new Date().toISOString()};
+    // Bangun data update — userRole hanya disertakan jika admin mengubahnya
+    const pd={
+      name:currentUser.name, role:currentUser.role,
+      nik:currentUser.nik, hp:currentUser.hp,
+      kantor:currentUser.kantor, join:currentUser.join,
+      departemen:currentUser.departemen, email:currentUser.email,
+      updatedAt:new Date().toISOString()
+    };
+    // Tambahkan userRole HANYA jika admin dan field role-select ada & diubah
+    const roleSelect=document.getElementById('ep-role-select');
+    if(hasRole('admin') && roleSelect && roleSelect.value){
+      pd.userRole=currentUser.userRole;
+      pd.role={admin:'Administrator',manager:'Manager',karyawan:'Karyawan',nonaktif:'Nonaktif'}[currentUser.userRole]||currentUser.role;
+    }
     if(avatarDataUrl)pd.avatar=avatarDataUrl;
     await fbSaveProfile(firebaseUser.uid,pd);showToast('Profil tersimpan ke Firestore!','success');
   }else{localStorage.setItem('user_profile',JSON.stringify(currentUser));showToast('Profil disimpan (lokal)','success');}
@@ -2144,19 +2177,8 @@ function loadFirebaseSDK(cfg){
       // Init services
       firebaseAuth = firebase.auth(app);
       firebaseDb   = firebase.firestore(app);
-      try{
-        if(typeof firebase.storage !== 'undefined'){
-          firebaseStorage = firebase.storage(app);
-          console.log('[Firebase] Storage ready');
-        } else {
-          console.warn('[Firebase] Storage SDK not loaded yet — foto tidak akan tersimpan');
-          firebaseStorage = null;
-        }
-      }catch(storageErr){
-        console.warn('[Firebase] Storage init skipped:', storageErr.message);
-        firebaseStorage = null;
-      }
-      // Persist session
+      // Storage diinit secara lazy — setelah SDK storage selesai dimuat
+      firebaseStorage = null;
       firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
       // Auth state listener
       firebaseAuth.onAuthStateChanged(async user=>{
@@ -2168,7 +2190,7 @@ function loadFirebaseSDK(cfg){
           currentUser = {
             email:user.email, uid:user.uid,
             name:prof?.name||user.displayName||user.email.split('@')[0],
-            userRole:prof?.userRole||'karyawan',
+            userRole:(prof&&prof.userRole)?prof.userRole:'karyawan',
             role:prof?.role||'Karyawan',
             nik:prof?.nik||'', hp:prof?.hp||'',
             kantor:prof?.kantor||'', join:prof?.join||'',
@@ -2190,7 +2212,18 @@ function loadFirebaseSDK(cfg){
       console.error('[Firebase] Init error:',e);
       showToast('Gagal init Firebase: '+e.message,'error');
     }
-  }).catch(e=>showToast('Gagal muat SDK: '+e.message,'error'));
+  }).then(()=>{
+    // Lazy init Storage setelah semua SDK siap
+    try{
+      if(typeof firebase!=='undefined' && typeof firebase.storage!=='undefined' && firebase.apps.length>0){
+        firebaseStorage=firebase.storage(firebase.app());
+        console.log('[Firebase] Storage initialized OK');
+      }
+    }catch(se){ console.warn('[Firebase] Storage skip:',se.message); firebaseStorage=null; }
+  }).catch(e=>{
+    console.error('[Firebase SDK] Error:',e);
+    showToast('Gagal muat Firebase SDK: '+e.message,'error');
+  });
 }
 async function fbLogin(email,pass){
   if(!firebaseAuth)return null;
@@ -2399,7 +2432,7 @@ async function saveUserForm(){
     kantor:document.getElementById('uf-kantor').value.trim(),
     join:document.getElementById('uf-join').value,
     departemen:document.getElementById('uf-departemen').value,
-    userRole:role,
+    userRole:role||'karyawan',
     role:roleDisplay[role]||'Karyawan',
     updatedAt:new Date().toISOString(),
     updatedBy:currentUser?.uid
@@ -3134,6 +3167,32 @@ function tutupDetailModal() {
   document.getElementById('modal-rekap-detail').classList.remove('open');
   if (detailMapObj) { detailMapObj.remove(); detailMapObj = null; }
 }
+
+// Fungsi untuk restore/set role user via console (darurat)
+// Cara pakai: ketik di console browser: setUserRole('uid_atau_email', 'admin')
+async function setUserRole(uidOrEmail, role){
+  if(!firebaseDb){console.error('Firebase tidak terhubung');return;}
+  if(!hasRole('admin')){console.error('Hanya admin yang bisa jalankan ini');return;}
+  const roleDisplay={admin:'Administrator',manager:'Manager',karyawan:'Karyawan',nonaktif:'Nonaktif'};
+  try{
+    let uid = uidOrEmail;
+    // Jika input adalah email, cari uid-nya
+    if(uidOrEmail.includes('@')){
+      const snap = await firebaseDb.collection('users').where('email','==',uidOrEmail).get();
+      if(snap.empty){console.error('User tidak ditemukan:', uidOrEmail);return;}
+      uid = snap.docs[0].id;
+      console.log('Found uid:', uid);
+    }
+    await firebaseDb.collection('users').doc(uid).set({
+      userRole:role,
+      role:roleDisplay[role]||role,
+      updatedAt:new Date().toISOString()
+    },{merge:true});
+    console.log('✅ Role berhasil diubah ke:', role, 'untuk uid:', uid);
+    alert('Role berhasil diubah ke ' + role + '! Silakan logout dan login ulang.');
+  }catch(e){console.error('Error:', e);}
+}
+window.setUserRole = setUserRole; // expose ke console
 // TOAST
 let toastTimer;
 function showToast(msg,type='info'){
@@ -3166,7 +3225,6 @@ function showToast(msg,type='info'){
 // ==============================================
 let deferredPrompt = null;
 let swRegistration = null;
-let firebaseStorage = null;
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
