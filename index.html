@@ -53,6 +53,16 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-login:disabled{background:#94a3b8;cursor:not-allowed;}
 .login-firebase-note{background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);padding:12px 14px;margin-top:16px;color:rgba(255,255,255,.8);font-size:.78rem;display:flex;gap:8px;align-items:flex-start;}
 .login-firebase-note i{color:#f97316;flex-shrink:0;margin-top:1px;}
+.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:rgba(255,255,255,.3);font-size:.75rem;}
+.login-divider::before,.login-divider::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.15);}
+#login-config-panel{margin-bottom:24px;}
+.config-status-box{border-radius:var(--radius-sm);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:.85rem;font-weight:600;}
+.config-status-box.ok{background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#86efac;}
+.config-status-box.none{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);}
+.config-status-box i{font-size:1.1rem;flex-shrink:0;}
+.btn-load-config{width:100%;padding:13px;background:rgba(255,255,255,.12);border:1.5px dashed rgba(255,255,255,.35);border-radius:var(--radius-sm);color:#fff;font-size:.9rem;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
+.btn-load-config:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.6);}
+#login-form-wrap.locked{opacity:.4;pointer-events:none;}
 .topbar{background:var(--primary);color:#fff;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,86,219,.2);}
 .topbar .brand{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:-.5px;}
 .topbar .brand span{color:#f97316;}
@@ -466,10 +476,29 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div id="page-login">
   <div class="login-card">
     <div class="login-logo"><div class="brand">Snap<span>Absen</span></div><p>Sistem Absensi Karyawan</p></div>
-    <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
-    <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
-    <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
-    <div class="login-firebase-note"><i class="fas fa-fire"></i><span>Konfigurasi Firebase di <b>Profil → Firebase Config</b> setelah login.</span></div>
+
+    <!-- LOAD CONFIG PANEL -->
+    <div id="login-config-panel">
+      <div class="config-status-box none" id="config-status-box">
+        <i class="fas fa-fire-flame-curved"></i>
+        <span id="config-status-text">Firebase belum terhubung</span>
+      </div>
+      <button class="btn-load-config" onclick="document.getElementById('file-config-input').click()">
+        <i class="fas fa-folder-open"></i> Muat File Config Firebase
+      </button>
+      <input type="file" id="file-config-input" accept=".json" style="display:none" onchange="loadConfigFromFile(this)">
+      <div style="font-size:.72rem;color:rgba(255,255,255,.4);text-align:center;margin-top:8px">
+        Pilih file <b>firebase-config.json</b> dari penyimpanan HP/laptop
+      </div>
+    </div>
+
+    <div class="login-divider">atau login jika sudah terhubung</div>
+
+    <div id="login-form-wrap" class="locked">
+      <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
+      <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
+      <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
+    </div>
   </div>
 </div>
 
@@ -1009,14 +1038,11 @@ function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];
 // INIT
 window.addEventListener('load',()=>{
   setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
-  const fc=localStorage.getItem('firebase_config');
   const oc=localStorage.getItem('office_config');
   if(oc){
     officeConfig=JSON.parse(oc);
-    // Override selalu dengan koordinat terkunci
     officeConfig={...officeConfig,lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama:FIXED_NAMA};
     updateRadiusDesc();
-    // Juga load dari Firestore jika ada (sinkron antar device)
     if(firebaseDb){
       firebaseDb.collection('settings').doc('office').get().then(doc=>{
         if(doc.exists){
@@ -1029,21 +1055,112 @@ window.addEventListener('load',()=>{
   }
   startClock();
   document.getElementById('lap-bulan').value=new Date().getMonth()+1;
-  if(fc){
-    firebaseConfig=JSON.parse(fc);
-    // Tampilkan session-check saat Firebase sedang memverifikasi
-    document.getElementById('page-login').style.display='none';
+
+  // ── LOAD CONFIG DARI FILE firebase-config.json ──────────────────
+  // Priority: 1) file json  2) localStorage (fallback)
+  fetch('firebase-config.json?v=' + Date.now())
+    .then(r => {
+      if (!r.ok) throw new Error('File tidak ditemukan');
+      return r.json();
+    })
+    .then(cfg => {
+      if (!cfg.apiKey || !cfg.projectId || !cfg.appId) throw new Error('Field tidak lengkap');
+      firebaseConfig = cfg;
+      localStorage.setItem('firebase_config', JSON.stringify(cfg)); // cache lokal
+      console.log('[SnapAbsen] Firebase config dimuat dari file ✓');
+      _startFirebase();
+    })
+    .catch(err => {
+      console.warn('[SnapAbsen] Gagal load firebase-config.json:', err.message, '— coba localStorage...');
+      const fc = localStorage.getItem('firebase_config');
+      if (fc) {
+        try {
+          firebaseConfig = JSON.parse(fc);
+          console.log('[SnapAbsen] Firebase config dimuat dari localStorage (cache) ✓');
+          _startFirebase();
+        } catch(e) {
+          _showConfigError();
+        }
+      } else {
+        _showConfigError();
+      }
+    });
+
+  function _startFirebase() {
+    document.getElementById('page-login').style.display = 'none';
     document.getElementById('session-check').classList.add('show');
     loadFirebaseSDK(firebaseConfig);
-    // Timeout fallback — jika Firebase tidak merespons dalam 6 detik, tampilkan login
-    setTimeout(()=>{
-      if(!currentUser){
+    setTimeout(() => {
+      if (!currentUser) {
         document.getElementById('session-check').classList.remove('show');
-        document.getElementById('page-login').style.display='flex';
+        document.getElementById('page-login').style.display = 'flex';
+        updateConfigStatus(true, firebaseConfig?.projectId);
       }
     }, 6000);
   }
+
+  function _showConfigError() {
+    document.getElementById('page-login').style.display = 'flex';
+    updateConfigStatus(false);
+  }
+  // ────────────────────────────────────────────────────────────────
 });
+
+// ── UPDATE TAMPILAN STATUS CONFIG DI HALAMAN LOGIN ───────────────
+function updateConfigStatus(connected, projectId) {
+  const box = document.getElementById('config-status-box');
+  const txt = document.getElementById('config-status-text');
+  const form = document.getElementById('login-form-wrap');
+  if (!box || !txt) return;
+  if (connected) {
+    box.className = 'config-status-box ok';
+    box.querySelector('i').className = 'fas fa-circle-check';
+    txt.textContent = 'Firebase terhubung' + (projectId ? ' — ' + projectId : '');
+    if (form) form.classList.remove('locked');
+  } else {
+    box.className = 'config-status-box none';
+    box.querySelector('i').className = 'fas fa-fire-flame-curved';
+    txt.textContent = 'Firebase belum terhubung — muat file config';
+    if (form) form.classList.add('locked');
+  }
+}
+
+// ── LOAD CONFIG DARI FILE YANG DIPILIH USER ──────────────────────
+function loadConfigFromFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const cfg = JSON.parse(e.target.result);
+      if (!cfg.apiKey || !cfg.projectId || !cfg.appId) {
+        showToast('File tidak valid — field apiKey/projectId/appId tidak ditemukan', 'error');
+        return;
+      }
+      firebaseConfig = cfg;
+      localStorage.setItem('firebase_config', JSON.stringify(cfg));
+      showToast('Config berhasil dimuat dari file ✓', 'success');
+      console.log('[SnapAbsen] Config dimuat dari file pilihan user ✓');
+      // Sambungkan Firebase langsung
+      document.getElementById('page-login').style.display = 'none';
+      document.getElementById('session-check').classList.add('show');
+      loadFirebaseSDK(cfg);
+      setTimeout(() => {
+        if (!currentUser) {
+          document.getElementById('session-check').classList.remove('show');
+          document.getElementById('page-login').style.display = 'flex';
+          updateConfigStatus(true, cfg.projectId);
+        }
+      }, 6000);
+    } catch(err) {
+      showToast('Gagal membaca file — pastikan format JSON valid', 'error');
+    }
+    input.value = ''; // reset supaya bisa pilih file yang sama lagi
+  };
+  reader.readAsText(file);
+}
+// ─────────────────────────────────────────────────────────────────
+
 function startClock(){
   const D=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
