@@ -1000,19 +1000,6 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
 let absenMap=null,absenMarker=null,absenCircle=null;
 let radiusMapObj=null,radiusMarker=null,radiusCircleObj=null;
-// ============================================================
-// FIREBASE CONFIG — HARDCODED (tidak perlu input manual)
-// ============================================================
-const HARDCODED_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAzCxEh8FgpUy_eLBVwgJ14G7I6U63TdWw",
-  authDomain: "snapabsen-ids.firebaseapp.com",
-  projectId: "snapabsen-ids",
-  storageBucket: "snapabsen-ids.firebasestorage.app",
-  messagingSenderId: "576838756786",
-  appId: "1:576838756786:web:04914fa6a3220c81531cab"
-};
-// ============================================================
-
 let officeConfig=null,firebaseConfig=null,firebaseDb=null,firebaseAuth=null,firebaseUser=null;
 var firebaseStorage=null;
 let avatarDataUrl=null,historyData=[],laporanData=[];
@@ -1022,6 +1009,7 @@ function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];
 // INIT
 window.addEventListener('load',()=>{
   setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
+  const fc=localStorage.getItem('firebase_config');
   const oc=localStorage.getItem('office_config');
   if(oc){
     officeConfig=JSON.parse(oc);
@@ -1041,19 +1029,20 @@ window.addEventListener('load',()=>{
   }
   startClock();
   document.getElementById('lap-bulan').value=new Date().getMonth()+1;
-  // Gunakan hardcoded config — simpan juga ke localStorage agar fillFirebaseForm() bisa baca
-  firebaseConfig = HARDCODED_FIREBASE_CONFIG;
-  localStorage.setItem('firebase_config', JSON.stringify(HARDCODED_FIREBASE_CONFIG));
-  document.getElementById('page-login').style.display='none';
-  document.getElementById('session-check').classList.add('show');
-  loadFirebaseSDK(firebaseConfig);
-  // Timeout fallback — jika Firebase tidak merespons dalam 6 detik, tampilkan login
-  setTimeout(()=>{
-    if(!currentUser){
-      document.getElementById('session-check').classList.remove('show');
-      document.getElementById('page-login').style.display='flex';
-    }
-  }, 6000);
+  if(fc){
+    firebaseConfig=JSON.parse(fc);
+    // Tampilkan session-check saat Firebase sedang memverifikasi
+    document.getElementById('page-login').style.display='none';
+    document.getElementById('session-check').classList.add('show');
+    loadFirebaseSDK(firebaseConfig);
+    // Timeout fallback — jika Firebase tidak merespons dalam 6 detik, tampilkan login
+    setTimeout(()=>{
+      if(!currentUser){
+        document.getElementById('session-check').classList.remove('show');
+        document.getElementById('page-login').style.display='flex';
+      }
+    }, 6000);
+  }
 });
 function startClock(){
   const D=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
