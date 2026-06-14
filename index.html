@@ -906,7 +906,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">Verifikasi Fingerprint</div>
           <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:16px">Tekan tombol di bawah lalu tempelkan jari Anda</div>
           <button id="btn-do-fingerprint" onclick="doFingerprintVerif()" style="width:100%;padding:14px;background:var(--primary);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint</button>
-          <button onclick="switchToSelfieVerif()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1.5px dashed var(--border);border-radius:10px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.82rem"><i class="fas fa-camera"></i> Fingerprint tidak tersedia? Gunakan Selfie</button>
+          <button onclick="switchToSelfieVerif()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1.5px dashed var(--border);border-radius:10px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.82rem"><i class="fas fa-camera"></i> Gunakan Selfie sebagai gantinya</button>
         </div>
       </div>
       <!-- Selfie fallback section (hidden by default) -->
@@ -976,9 +976,9 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <div style="font-weight:700;margin-bottom:2px"><i class="fas fa-map-marker-alt" style="margin-right:5px"></i><span id="rk-selected-addr-text"></span></div>
       </div>
       <div class="rk-group"><label>Nama Lokasi Kantor</label><input class="rk-input" type="text" id="rk-nama" placeholder="Kantor Pusat Surabaya"></div>
-      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-radius-input-wrap"><input type="number" id="rk-radius" min="3" max="2000" step="1" value="200" class="rk-radius-number" oninput="updateRadiusSlider()" placeholder="200"><span class="rk-radius-unit">meter</span></div><div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Min: 3 m — Max: 2000 m</div></div>
-      <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" readonly style="background:#f8fafc"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" readonly style="background:#f8fafc"></div></div>
-      <button class="btn-rk-lokasi" onclick="getOfficeLocation()"><i class="fas fa-crosshairs"></i> Gunakan Lokasi Saya</button>
+      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-radius-input-wrap"><input type="number" id="rk-radius" min="20" max="20" step="1" value="20" class="rk-radius-number" readonly style="background:#f1f5f9;cursor:not-allowed;color:#64748b" placeholder="20"><span class="rk-radius-unit">meter</span></div><div style="font-size:.75rem;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="fas fa-lock" style="font-size:.65rem"></i> Radius dikunci: 20 m</div></div>
+      <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" value="-7.285319" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" value="112.759543" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"></div></div>
+      <!-- Koordinat dikunci ke Jalan Pucang Anom Timur III No. 12, Surabaya --><div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#1d4ed8;display:flex;align-items:center;gap:6px"><i class="fas fa-lock"></i> Koordinat dikunci: Jalan Pucang Anom Timur III No. 12, Surabaya</div>
       <button class="btn-rk-save" onclick="saveRadius()"><i class="fas fa-save"></i> Simpan Konfigurasi</button>
       <button class="btn-rk-cancel" onclick="closeRadiusModal()">Batal</button>
     </div>
@@ -1015,6 +1015,17 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <h2><i class="fas fa-fire"></i> Konfigurasi Firebase</h2>
     <p class="fb-sub">Masukkan konfigurasi Firebase project Anda.</p>
     <div class="fb-status disconnected" id="fb-status"><div class="fb-dot"></div><span id="fb-status-text">Belum Terhubung</span></div>
+    <!-- Load dari file JSON -->
+    <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:.88rem;color:#15803d;margin-bottom:6px"><i class="fas fa-file-import"></i> Load dari File Config</div>
+      <div style="font-size:.78rem;color:#166534;margin-bottom:10px">Pilih file <b>firebase-config.json</b> yang sudah Anda simpan di HP. Semua field akan terisi otomatis.</div>
+      <label id="btn-load-config" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;background:#16a34a;border-radius:8px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.88rem;box-sizing:border-box">
+        <i class="fas fa-folder-open"></i> Pilih File firebase-config.json
+        <input type="file" id="fb-config-file" accept=".json,application/json" style="display:none" onchange="loadFirebaseConfigFile(this)">
+      </label>
+      <div id="fb-file-status" style="display:none;margin-top:8px;font-size:.78rem;font-weight:700;text-align:center;padding:6px;border-radius:6px"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap">atau isi manual</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
     <div class="fb-help"><b>📋 Cara mendapatkan config Firebase:</b>Firebase Console → Project Settings → General → Web app → Config object.</div>
     <div class="fb-group"><label>API Key *</label><input type="text" id="fb-apiKey" placeholder="AIzaSy..."></div>
     <div class="fb-group"><label>Auth Domain *</label><input type="text" id="fb-authDomain" placeholder="project.firebaseapp.com"></div>
@@ -1043,9 +1054,12 @@ function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];
 window.addEventListener('load',()=>{
   setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
   const fc=localStorage.getItem('firebase_config');
+  const FIXED_OFFICE={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
   const oc=localStorage.getItem('office_config');
   if(oc){
-    officeConfig=JSON.parse(oc);
+    const parsed=JSON.parse(oc);
+    // Selalu paksa koordinat & radius ke nilai yang dikunci
+    officeConfig={...parsed,...FIXED_OFFICE};
     updateRadiusDesc();
     // Juga load dari Firestore jika ada (sinkron antar device)
     if(firebaseDb){
@@ -1423,8 +1437,12 @@ async function doFingerprintVerif(){
 
     if(cred){
       verifMethod='fingerprint';verifDone=true;
-      showVerifStatus('success','✅ Fingerprint terverifikasi!');
+      showVerifStatus('success','✅ Fingerprint terverifikasi! Selfie opsional untuk bukti tambahan.');
       btn.innerHTML='<i class="fas fa-check"></i> Terverifikasi';
+      // Aktifkan selfie sebagai foto bukti tambahan (opsional)
+      document.getElementById('verif-selfie-section').style.display='block';
+      document.getElementById('verif-selfie-section').querySelector('div').innerHTML='<i class="fas fa-camera" style="color:#0891b2"></i> <strong style="color:#0891b2">Selfie Bukti (Opsional)</strong> — Ambil foto untuk bukti tambahan absensi';
+      setTimeout(startCamera,400);
       const btnSubmit=document.getElementById('btn-submit-absen');
       btnSubmit.disabled=false;btnSubmit.style.opacity='1';
       btnSubmit.style.background='var(--green)';
@@ -1677,8 +1695,14 @@ function analyzeLocation(samples){
     else setMapStatus('luar','✗ Di luar zona absensi','Jarak: '+Math.round(dist)+' m (radius: '+officeConfig.radius+' m)');
     document.getElementById('map-radius-note').textContent='Zona: '+(officeConfig.nama||'Kantor')+' — Radius '+officeConfig.radius+' m';
   } else {
-    locationOk=true;
-    setMapStatus('dalam','✓ Lokasi ditemukan'+(fakeScore>=2?' (ada peringatan)':''),'Lat: '+lat.toFixed(5)+', Lng: '+lng.toFixed(5));
+    // Gunakan koordinat kantor yang dikunci jika belum ada config
+    officeConfig={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
+    localStorage.setItem('office_config',JSON.stringify(officeConfig));
+    const dist=getDistance(lat,lng,officeConfig.lat,officeConfig.lng);
+    locationOk=dist<=officeConfig.radius;
+    if(locationOk) setMapStatus('dalam','✓ Dalam zona absensi'+(fakeScore>=2?' ⚠️':''),'Jarak ke kantor: '+Math.round(dist)+' m');
+    else setMapStatus('luar','✗ Di luar zona absensi','Jarak: '+Math.round(dist)+' m (radius: 20 m)');
+    document.getElementById('map-radius-note').textContent='Zona: Kantor Pusat Surabaya — Radius 20 m';
   }
   document.getElementById('btn-step1-next').disabled=!locationOk;
 }
@@ -2312,15 +2336,16 @@ function openRadiusModal(){if(!hasRole('manager')){showToast('Hanya Admin/Manage
 function closeRadiusModal(){document.getElementById('modal-radius').classList.remove('open');}
 function initRadiusMap(){
   if(radiusMapObj){radiusMapObj.invalidateSize();return;}
-  const DEFAULT_LAT=-7.275700,DEFAULT_LNG=112.762900,DEFAULT_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
-  const dLat=officeConfig?.lat||DEFAULT_LAT,dLng=officeConfig?.lng||DEFAULT_LNG,dR=officeConfig?.radius||200;
+  const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20,FIXED_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
+  const dLat=FIXED_LAT,dLng=FIXED_LNG,dR=FIXED_RADIUS;
   radiusMapObj=L.map('radius-map',{zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(radiusMapObj);
   radiusMapObj.setView([dLat,dLng],16);
   radiusMarker=L.marker([dLat,dLng],{draggable:true}).addTo(radiusMapObj);
   radiusCircleObj=L.circle([dLat,dLng],{radius:dR,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2}).addTo(radiusMapObj);
   radiusMarker.on('dragend',()=>{const p=radiusMarker.getLatLng();radiusCircleObj.setLatLng([p.lat,p.lng]);document.getElementById('rk-lat').value=p.lat.toFixed(6);document.getElementById('rk-lng').value=p.lng.toFixed(6);});
-  radiusMapObj.on('click',e=>{radiusMarker.setLatLng(e.latlng);radiusCircleObj.setLatLng(e.latlng);document.getElementById('rk-lat').value=e.latlng.lat.toFixed(6);document.getElementById('rk-lng').value=e.latlng.lng.toFixed(6);});
+  radiusMapObj.on('click',e=>{// Koordinat dikunci, marker tidak bisa dipindah
+  radiusMarker.setLatLng([FIXED_LAT,FIXED_LNG]);radiusCircleObj.setLatLng([FIXED_LAT,FIXED_LNG]);});
   document.getElementById('rk-lat').value=dLat.toFixed(6);document.getElementById('rk-lng').value=dLng.toFixed(6);
   document.getElementById('rk-radius').value=dR;
   document.getElementById('rk-nama').value=officeConfig?.nama||'';
@@ -2330,11 +2355,12 @@ function initRadiusMap(){
 function updateRadiusSlider(){let r=parseInt(document.getElementById('rk-radius').value)||200;if(r<3)r=3;if(r>2000)r=2000;if(radiusCircleObj)radiusCircleObj.setRadius(r);}
 function getOfficeLocation(){navigator.geolocation.getCurrentPosition(p=>{const la=p.coords.latitude,lo=p.coords.longitude;radiusMapObj.setView([la,lo],17);radiusMarker.setLatLng([la,lo]);radiusCircleObj.setLatLng([la,lo]);document.getElementById('rk-lat').value=la.toFixed(6);document.getElementById('rk-lng').value=lo.toFixed(6);showToast('GPS ditemukan!','success');},()=>showToast('Gagal GPS','error'));}
 function saveRadius(){
-  const nama=document.getElementById('rk-nama').value.trim()||'Kantor',lat=parseFloat(document.getElementById('rk-lat').value),lng=parseFloat(document.getElementById('rk-lng').value),radius=parseInt(document.getElementById('rk-radius').value);
-  if(isNaN(lat)||isNaN(lng)){showToast('Koordinat tidak valid','error');return;}
-  const addrEl=document.getElementById('rk-selected-addr-text');
-  const address=(addrEl&&addrEl.textContent.trim())||document.getElementById('rk-alamat').value.trim()||'';
-  officeConfig={lat,lng,radius,nama,address};localStorage.setItem('office_config',JSON.stringify(officeConfig));
+  // Koordinat dan radius dikunci ke kantor tetap
+  const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20;
+  const FIXED_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
+  const nama=document.getElementById('rk-nama').value.trim()||'Kantor Pusat Surabaya';
+  officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama,address:FIXED_ADDR};
+  localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
   updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
 }
@@ -2494,6 +2520,43 @@ function updateFirebaseStatus(){
   else if(firebaseConfig?.projectId){st.className='fb-status pending';txt.textContent='Config tersimpan, menghubungkan...';if(desc)desc.textContent='Project: '+firebaseConfig.projectId;}
   else{st.className='fb-status disconnected';txt.textContent='Belum terhubung';if(desc)desc.textContent='Belum terkonfigurasi';}
 }
+function loadFirebaseConfigFile(input){
+  const file=input.files[0];
+  if(!file){return;}
+  const statusEl=document.getElementById('fb-file-status');
+  statusEl.style.display='block';
+  statusEl.style.background='#eff6ff';
+  statusEl.style.color='#1d4ed8';
+  statusEl.textContent='⏳ Membaca file...';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const cfg=JSON.parse(e.target.result);
+      // Validasi field wajib
+      if(!cfg.apiKey||!cfg.projectId||!cfg.appId){
+        statusEl.style.background='#fef2f2';statusEl.style.color='#dc2626';
+        statusEl.textContent='❌ File tidak valid — pastikan berisi apiKey, projectId, appId';
+        return;
+      }
+      // Isi semua field secara otomatis
+      const fields=['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId','databaseURL'];
+      fields.forEach(f=>{const el=document.getElementById('fb-'+f);if(el)el.value=cfg[f]||'';});
+      statusEl.style.background='#f0fdf4';statusEl.style.color='#15803d';
+      statusEl.textContent='✅ File berhasil dimuat! Silakan tekan Simpan & Hubungkan.';
+      // Reset file input agar bisa load file lagi jika perlu
+      input.value='';
+    }catch(err){
+      statusEl.style.background='#fef2f2';statusEl.style.color='#dc2626';
+      statusEl.textContent='❌ File bukan JSON yang valid: '+err.message;
+    }
+  };
+  reader.onerror=function(){
+    statusEl.style.background='#fef2f2';statusEl.style.color='#dc2626';
+    statusEl.textContent='❌ Gagal membaca file.';
+  };
+  reader.readAsText(file);
+}
+
 function saveFirebaseConfig(){
   const fields=['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId','databaseURL'],cfg={};
   fields.forEach(f=>cfg[f]=document.getElementById('fb-'+f).value.trim());
