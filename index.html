@@ -53,16 +53,6 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .btn-login:disabled{background:#94a3b8;cursor:not-allowed;}
 .login-firebase-note{background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);padding:12px 14px;margin-top:16px;color:rgba(255,255,255,.8);font-size:.78rem;display:flex;gap:8px;align-items:flex-start;}
 .login-firebase-note i{color:#f97316;flex-shrink:0;margin-top:1px;}
-.login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:rgba(255,255,255,.3);font-size:.75rem;}
-.login-divider::before,.login-divider::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.15);}
-#login-config-panel{margin-bottom:24px;}
-.config-status-box{border-radius:var(--radius-sm);padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px;font-size:.85rem;font-weight:600;}
-.config-status-box.ok{background:rgba(22,163,74,.2);border:1px solid rgba(22,163,74,.4);color:#86efac;}
-.config-status-box.none{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);}
-.config-status-box i{font-size:1.1rem;flex-shrink:0;}
-.btn-load-config{width:100%;padding:13px;background:rgba(255,255,255,.12);border:1.5px dashed rgba(255,255,255,.35);border-radius:var(--radius-sm);color:#fff;font-size:.9rem;font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;}
-.btn-load-config:hover{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.6);}
-#login-form-wrap.locked{opacity:.4;pointer-events:none;}
 .topbar{background:var(--primary);color:#fff;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,86,219,.2);}
 .topbar .brand{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:-.5px;}
 .topbar .brand span{color:#f97316;}
@@ -476,29 +466,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div id="page-login">
   <div class="login-card">
     <div class="login-logo"><div class="brand">Snap<span>Absen</span></div><p>Sistem Absensi Karyawan</p></div>
-
-    <!-- LOAD CONFIG PANEL -->
-    <div id="login-config-panel">
-      <div class="config-status-box none" id="config-status-box">
-        <i class="fas fa-fire-flame-curved"></i>
-        <span id="config-status-text">Firebase belum terhubung</span>
-      </div>
-      <button class="btn-load-config" onclick="document.getElementById('file-config-input').click()">
-        <i class="fas fa-folder-open"></i> Muat File Config Firebase
-      </button>
-      <input type="file" id="file-config-input" accept=".json" style="display:none" onchange="loadConfigFromFile(this)">
-      <div style="font-size:.72rem;color:rgba(255,255,255,.4);text-align:center;margin-top:8px">
-        Pilih file <b>firebase-config.json</b> dari penyimpanan HP/laptop
-      </div>
-    </div>
-
-    <div class="login-divider">atau login jika sudah terhubung</div>
-
-    <div id="login-form-wrap" class="locked">
-      <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
-      <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
-      <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
-    </div>
+    <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
+    <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
+    <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
+    <div class="login-firebase-note"><i class="fas fa-fire"></i><span>Konfigurasi Firebase di <b>Profil → Firebase Config</b> setelah login.</span></div>
   </div>
 </div>
 
@@ -889,43 +860,76 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
     <div class="absen-steps">
       <div class="absen-step active" id="step-ind-1"><div class="step-num">1</div><div class="step-label">Lokasi</div></div>
       <div class="step-line" id="step-line-1"></div>
-      <div class="absen-step" id="step-ind-2"><div class="step-num">2</div><div class="step-label">Selfie</div></div>
+      <div class="absen-step" id="step-ind-2"><div class="step-num">2</div><div class="step-label">Pilih Absen</div></div>
       <div class="step-line" id="step-line-2"></div>
-      <div class="absen-step" id="step-ind-3"><div class="step-num">3</div><div class="step-label">Konfirmasi</div></div>
+      <div class="absen-step" id="step-ind-3"><div class="step-num">3</div><div class="step-label">Verifikasi</div></div>
     </div>
     <div class="absen-step-content active" id="step-1">
       <div class="absen-step-title"><i class="fas fa-map-marker-alt"></i> Verifikasi Lokasi</div>
       <div id="absen-map"></div>
       <div class="map-info-row loading" id="map-status-row"><i class="fas fa-spinner fa-spin"></i><div><div style="font-weight:700">Mengambil lokasi GPS...</div></div></div>
       <div class="map-radius-note" id="map-radius-note"></div>
-      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Selfie</button><button class="btn-cancel-modal" onclick="closeAbsenModal()">Batal</button></div>
+      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step1-next" onclick="goToStep(2)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Pilih Absen</button><button class="btn-cancel-modal" onclick="closeAbsenModal()">Batal</button></div>
     </div>
     <div class="absen-step-content" id="step-2">
-      <div class="absen-step-title"><i class="fas fa-camera"></i> Foto Selfie</div>
-      <div class="camera-area" id="camera-area">
-        <div class="cam-placeholder" id="cam-placeholder"><i class="fas fa-camera"></i><div style="font-size:.82rem;margin-top:6px">Tekan tombol untuk aktifkan kamera</div></div>
-        <video id="camera-video" style="display:none" autoplay playsinline muted></video>
-        <canvas id="camera-canvas" style="display:none"></canvas>
-        <div class="cam-overlay" style="display:none" id="cam-overlay"><div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div></div>
-        <div class="cam-photo-taken" id="cam-taken-badge" style="display:none"><i class="fas fa-check"></i> Foto diambil</div>
+      <div class="absen-step-title"><i class="fas fa-hand-pointer"></i> Pilih Jenis Absen</div>
+      <div style="display:flex;gap:14px;margin-bottom:20px">
+        <button id="btn-pilih-masuk" onclick="pilihJenisAbsen('masuk')" style="flex:1;padding:20px 10px;background:#f0fdf4;border:2.5px solid #bbf7d0;border-radius:14px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s">
+          <div style="font-size:2rem;margin-bottom:8px">🟢</div>
+          <div style="font-weight:800;font-size:1rem;color:#16a34a">Absen Masuk</div>
+          <div style="font-size:.75rem;color:#86efac;margin-top:4px">Check-in ke kantor</div>
+        </button>
+        <button id="btn-pilih-keluar" onclick="pilihJenisAbsen('pulang')" style="flex:1;padding:20px 10px;background:#fff7ed;border:2.5px solid #fed7aa;border-radius:14px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;transition:all .2s">
+          <div style="font-size:2rem;margin-bottom:8px">🟠</div>
+          <div style="font-weight:800;font-size:1rem;color:#ea580c">Absen Keluar</div>
+          <div style="font-size:.75rem;color:#fdba74;margin-top:4px">Check-out dari kantor</div>
+        </button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button onclick="startCamera()" style="flex:1;padding:10px;background:var(--primary-light);border:none;border-radius:8px;color:var(--primary);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-camera"></i> Aktifkan</button>
-        <button onclick="capturePhoto()" style="flex:1;padding:10px;background:var(--primary);border:none;border-radius:8px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-circle"></i> Ambil Foto</button>
-      </div>
-      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step2-next" onclick="goToStep(3)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Konfirmasi</button><button class="btn-back-step" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Kembali</button></div>
+      <div id="pilih-absen-selected" style="display:none;background:#f0f9ff;border:1.5px solid #bae6fd;border-radius:10px;padding:12px;margin-bottom:16px;text-align:center;font-weight:700;color:#0891b2;font-size:.95rem"></div>
+      <div style="padding:0 0 16px"><button class="btn-next-step" id="btn-step2-next" onclick="goToStep(3)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Verifikasi</button><button class="btn-back-step" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Kembali</button></div>
     </div>
     <div class="absen-step-content" id="step-3">
-      <div class="absen-step-title"><i class="fas fa-check-circle"></i> Konfirmasi Absensi</div>
-      <div style="background:#f8fafc;border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;border:1.5px solid var(--border)">
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><canvas id="thumb-canvas" width="60" height="60" style="border-radius:8px;border:2px solid var(--border);flex-shrink:0"></canvas><div><div style="font-weight:700;font-size:.9rem" id="confirm-name">—</div><div style="font-size:.78rem;color:var(--text-muted)" id="confirm-role">—</div><div style="font-size:.78rem;color:var(--text-muted);margin-top:3px" id="confirm-time"></div></div></div>
-        <div style="border-top:1px solid var(--border);padding-top:10px;font-size:.8rem;color:var(--text-muted)">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><i class="fas fa-map-marker-alt" style="color:var(--primary);width:14px"></i><span id="confirm-loc">—</span></div>
+      <div class="absen-step-title"><i class="fas fa-shield-alt"></i> Verifikasi Identitas</div>
+      <!-- Ringkasan absen -->
+      <div style="background:#f8fafc;border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;border:1.5px solid var(--border)">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px"><canvas id="thumb-canvas" width="50" height="50" style="border-radius:8px;border:2px solid var(--border);flex-shrink:0"></canvas><div><div style="font-weight:700;font-size:.88rem" id="confirm-name">—</div><div style="font-size:.75rem;color:var(--text-muted)" id="confirm-role">—</div><div style="font-size:.75rem;color:var(--text-muted);margin-top:2px" id="confirm-time"></div></div></div>
+        <div style="border-top:1px solid var(--border);padding-top:8px;font-size:.78rem;color:var(--text-muted)">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><i class="fas fa-map-marker-alt" style="color:var(--primary);width:14px"></i><span id="confirm-loc">—</span></div>
           <div style="display:flex;align-items:center;gap:6px" id="confirm-radius-row"><i class="fas fa-circle-dot" style="color:var(--green);width:14px"></i><span id="confirm-radius-txt">—</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px" id="confirm-jenis-row"><i class="fas fa-sign-in-alt" style="color:var(--primary);width:14px"></i><span id="confirm-jenis-txt" style="font-weight:700;color:var(--primary)">—</span></div>
         </div>
       </div>
+      <!-- Fingerprint section -->
+      <div id="verif-fingerprint-section">
+        <div style="text-align:center;padding:18px 0 10px">
+          <div style="font-size:3rem;margin-bottom:8px">👆</div>
+          <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">Verifikasi Fingerprint</div>
+          <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:16px">Tekan tombol di bawah lalu tempelkan jari Anda</div>
+          <button id="btn-do-fingerprint" onclick="doFingerprintVerif()" style="width:100%;padding:14px;background:var(--primary);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:8px"><i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint</button>
+          <button onclick="switchToSelfieVerif()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1.5px dashed var(--border);border-radius:10px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.82rem"><i class="fas fa-camera"></i> Fingerprint tidak tersedia? Gunakan Selfie</button>
+        </div>
+      </div>
+      <!-- Selfie fallback section (hidden by default) -->
+      <div id="verif-selfie-section" style="display:none">
+        <div style="font-size:.82rem;color:var(--text-muted);text-align:center;margin-bottom:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px"><i class="fas fa-info-circle" style="color:#f59e0b"></i> Menggunakan foto selfie sebagai verifikasi</div>
+        <div class="camera-area" id="camera-area">
+          <div class="cam-placeholder" id="cam-placeholder"><i class="fas fa-camera"></i><div style="font-size:.82rem;margin-top:6px">Tekan tombol untuk aktifkan kamera</div></div>
+          <video id="camera-video" style="display:none" autoplay playsinline muted></video>
+          <canvas id="camera-canvas" style="display:none"></canvas>
+          <div class="cam-overlay" style="display:none" id="cam-overlay"><div class="cam-corner tl"></div><div class="cam-corner tr"></div><div class="cam-corner bl"></div><div class="cam-corner br"></div></div>
+          <div class="cam-photo-taken" id="cam-taken-badge" style="display:none"><i class="fas fa-check"></i> Foto diambil</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button onclick="startCamera()" style="flex:1;padding:10px;background:var(--primary-light);border:none;border-radius:8px;color:var(--primary);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-camera"></i> Aktifkan</button>
+          <button onclick="capturePhoto()" style="flex:1;padding:10px;background:var(--primary);border:none;border-radius:8px;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.85rem"><i class="fas fa-circle"></i> Ambil Foto</button>
+        </div>
+        <button onclick="switchToFingerprintVerif()" style="width:100%;margin-bottom:10px;padding:8px;background:transparent;border:1.5px dashed var(--border);border-radius:8px;color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;font-size:.78rem"><i class="fas fa-fingerprint"></i> Coba lagi dengan Fingerprint</button>
+      </div>
+      <!-- Status verifikasi -->
+      <div id="verif-status" style="display:none;text-align:center;padding:12px;border-radius:10px;margin-bottom:12px;font-weight:700;font-size:.9rem"></div>
+      <!-- Submit button -->
       <div style="padding:0 0 16px">
-        <div style="display:flex;gap:10px;margin-bottom:8px"><button class="btn-masuk" onclick="submitAbsen('masuk')"><i class="fas fa-sign-in-alt"></i> Absen Masuk</button><button class="btn-pulang" onclick="submitAbsen('pulang')"><i class="fas fa-sign-out-alt"></i> Absen Pulang</button></div>
+        <button class="btn-masuk" id="btn-submit-absen" onclick="doSubmitAbsen()" disabled style="width:100%;margin-bottom:8px;justify-content:center;opacity:.5"><i class="fas fa-paper-plane"></i> <span id="btn-submit-label">Submit Absen</span></button>
         <button class="btn-back-step" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Kembali</button>
       </div>
     </div>
@@ -1038,15 +1042,16 @@ function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];
 // INIT
 window.addEventListener('load',()=>{
   setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
+  const fc=localStorage.getItem('firebase_config');
   const oc=localStorage.getItem('office_config');
   if(oc){
     officeConfig=JSON.parse(oc);
-    officeConfig={...officeConfig,lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama:FIXED_NAMA};
     updateRadiusDesc();
+    // Juga load dari Firestore jika ada (sinkron antar device)
     if(firebaseDb){
       firebaseDb.collection('settings').doc('office').get().then(doc=>{
         if(doc.exists){
-          officeConfig={...officeConfig,...doc.data(),lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama:FIXED_NAMA};
+          officeConfig={...officeConfig,...doc.data()};
           localStorage.setItem('office_config',JSON.stringify(officeConfig));
           updateRadiusDesc();
         }
@@ -1055,112 +1060,21 @@ window.addEventListener('load',()=>{
   }
   startClock();
   document.getElementById('lap-bulan').value=new Date().getMonth()+1;
-
-  // ── LOAD CONFIG DARI FILE firebase-config.json ──────────────────
-  // Priority: 1) file json  2) localStorage (fallback)
-  fetch('firebase-config.json?v=' + Date.now())
-    .then(r => {
-      if (!r.ok) throw new Error('File tidak ditemukan');
-      return r.json();
-    })
-    .then(cfg => {
-      if (!cfg.apiKey || !cfg.projectId || !cfg.appId) throw new Error('Field tidak lengkap');
-      firebaseConfig = cfg;
-      localStorage.setItem('firebase_config', JSON.stringify(cfg)); // cache lokal
-      console.log('[SnapAbsen] Firebase config dimuat dari file ✓');
-      _startFirebase();
-    })
-    .catch(err => {
-      console.warn('[SnapAbsen] Gagal load firebase-config.json:', err.message, '— coba localStorage...');
-      const fc = localStorage.getItem('firebase_config');
-      if (fc) {
-        try {
-          firebaseConfig = JSON.parse(fc);
-          console.log('[SnapAbsen] Firebase config dimuat dari localStorage (cache) ✓');
-          _startFirebase();
-        } catch(e) {
-          _showConfigError();
-        }
-      } else {
-        _showConfigError();
-      }
-    });
-
-  function _startFirebase() {
-    document.getElementById('page-login').style.display = 'none';
+  if(fc){
+    firebaseConfig=JSON.parse(fc);
+    // Tampilkan session-check saat Firebase sedang memverifikasi
+    document.getElementById('page-login').style.display='none';
     document.getElementById('session-check').classList.add('show');
     loadFirebaseSDK(firebaseConfig);
-    setTimeout(() => {
-      if (!currentUser) {
+    // Timeout fallback — jika Firebase tidak merespons dalam 6 detik, tampilkan login
+    setTimeout(()=>{
+      if(!currentUser){
         document.getElementById('session-check').classList.remove('show');
-        document.getElementById('page-login').style.display = 'flex';
-        updateConfigStatus(true, firebaseConfig?.projectId);
+        document.getElementById('page-login').style.display='flex';
       }
     }, 6000);
   }
-
-  function _showConfigError() {
-    document.getElementById('page-login').style.display = 'flex';
-    updateConfigStatus(false);
-  }
-  // ────────────────────────────────────────────────────────────────
 });
-
-// ── UPDATE TAMPILAN STATUS CONFIG DI HALAMAN LOGIN ───────────────
-function updateConfigStatus(connected, projectId) {
-  const box = document.getElementById('config-status-box');
-  const txt = document.getElementById('config-status-text');
-  const form = document.getElementById('login-form-wrap');
-  if (!box || !txt) return;
-  if (connected) {
-    box.className = 'config-status-box ok';
-    box.querySelector('i').className = 'fas fa-circle-check';
-    txt.textContent = 'Firebase terhubung' + (projectId ? ' — ' + projectId : '');
-    if (form) form.classList.remove('locked');
-  } else {
-    box.className = 'config-status-box none';
-    box.querySelector('i').className = 'fas fa-fire-flame-curved';
-    txt.textContent = 'Firebase belum terhubung — muat file config';
-    if (form) form.classList.add('locked');
-  }
-}
-
-// ── LOAD CONFIG DARI FILE YANG DIPILIH USER ──────────────────────
-function loadConfigFromFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const cfg = JSON.parse(e.target.result);
-      if (!cfg.apiKey || !cfg.projectId || !cfg.appId) {
-        showToast('File tidak valid — field apiKey/projectId/appId tidak ditemukan', 'error');
-        return;
-      }
-      firebaseConfig = cfg;
-      localStorage.setItem('firebase_config', JSON.stringify(cfg));
-      showToast('Config berhasil dimuat dari file ✓', 'success');
-      console.log('[SnapAbsen] Config dimuat dari file pilihan user ✓');
-      // Sambungkan Firebase langsung
-      document.getElementById('page-login').style.display = 'none';
-      document.getElementById('session-check').classList.add('show');
-      loadFirebaseSDK(cfg);
-      setTimeout(() => {
-        if (!currentUser) {
-          document.getElementById('session-check').classList.remove('show');
-          document.getElementById('page-login').style.display = 'flex';
-          updateConfigStatus(true, cfg.projectId);
-        }
-      }, 6000);
-    } catch(err) {
-      showToast('Gagal membaca file — pastikan format JSON valid', 'error');
-    }
-    input.value = ''; // reset supaya bisa pilih file yang sama lagi
-  };
-  reader.readAsText(file);
-}
-// ─────────────────────────────────────────────────────────────────
-
 function startClock(){
   const D=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -1249,7 +1163,7 @@ function doLogout(){
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   showToast('Anda telah keluar');
 }
-window.addEventListener('load',()=>{const lp=document.getElementById('login-pass');if(lp)lp.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});});
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 // ROLE UI
 function applyRoleUI(){
@@ -1314,7 +1228,7 @@ function switchTab(name){
 // LOAD DATA
 async function loadMyAbsensiToday(){
   if(!firebaseDb||!currentUser)return;
-  const _n=new Date();const today=`${_n.getFullYear()}-${String(_n.getMonth()+1).padStart(2,'0')}-${String(_n.getDate()).padStart(2,'0')}`;
+  const today=new Date().toISOString().split('T')[0];
   try{
     const snap=await firebaseDb.collection('absensi').where('uid','==',currentUser.uid).where('date','==',today).get();
     const c=document.getElementById('activity-list');
@@ -1414,15 +1328,179 @@ function openAbsenModal(){
 function closeAbsenModal(){
   document.getElementById('modal-absen').classList.remove('open');
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;
+  resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;selectedAbsenType=null;verifMethod=null;verifDone=false;
 }
+let selectedAbsenType=null; // 'masuk' atau 'pulang'
+let verifMethod=null; // 'fingerprint' atau 'selfie'
+let verifDone=false;
+
 function goToStep(n){
   document.querySelectorAll('.absen-step-content').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-'+n).classList.add('active');
   [1,2,3].forEach(i=>{const el=document.getElementById('step-ind-'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});
   [1,2].forEach(i=>document.getElementById('step-line-'+i).classList.toggle('done',i<n));
-  if(n===2)setTimeout(startCamera,300);
-  if(n===3)buildConfirmSummary();
+  if(n===3){buildConfirmSummary();resetVerifState();}
+}
+
+function pilihJenisAbsen(type){
+  selectedAbsenType=type;
+  // Visual feedback
+  const btnM=document.getElementById('btn-pilih-masuk');
+  const btnK=document.getElementById('btn-pilih-keluar');
+  btnM.style.borderColor=type==='masuk'?'#16a34a':'#bbf7d0';
+  btnM.style.background=type==='masuk'?'#dcfce7':'#f0fdf4';
+  btnK.style.borderColor=type==='pulang'?'#ea580c':'#fed7aa';
+  btnK.style.background=type==='pulang'?'#ffedd5':'#fff7ed';
+  const sel=document.getElementById('pilih-absen-selected');
+  sel.style.display='block';
+  sel.innerHTML=type==='masuk'?'✅ Dipilih: <strong>Absen Masuk</strong>':'✅ Dipilih: <strong>Absen Keluar</strong>';
+  document.getElementById('btn-step2-next').disabled=false;
+}
+
+async function checkBiometricAvail(){
+  try{
+    if(!window.PublicKeyCredential) return false;
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  }catch(e){return false;}
+}
+
+function resetVerifState(){
+  verifMethod=null;verifDone=false;
+  document.getElementById('verif-fingerprint-section').style.display='block';
+  document.getElementById('verif-selfie-section').style.display='none';
+  // Auto-check biometric availability
+  checkBiometricAvail().then(avail=>{
+    if(!avail){
+      showVerifStatus('warning','⚠️ Fingerprint tidak terdeteksi di perangkat ini. Menggunakan Selfie.');
+      setTimeout(switchToSelfieVerif,1500);
+    }
+  });
+  const vstatus=document.getElementById('verif-status');
+  vstatus.style.display='none';vstatus.textContent='';
+  const btnSubmit=document.getElementById('btn-submit-absen');
+  btnSubmit.disabled=true;btnSubmit.style.opacity='.5';
+  // Stop camera if running
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  resetCameraUI();capturedPhoto=null;
+  // Update submit label
+  const lbl=document.getElementById('btn-submit-label');
+  if(lbl)lbl.textContent='Submit Absen '+(selectedAbsenType==='masuk'?'Masuk':'Keluar');
+}
+
+async function doFingerprintVerif(){
+  const btn=document.getElementById('btn-do-fingerprint');
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...';
+  try{
+    // Cek WebAuthn tersedia
+    if(!window.PublicKeyCredential){throw new Error('not_supported');}
+    const available=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if(!available){throw new Error('not_available');}
+
+    // Buat random challenge & userId unik per sesi
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    const userId=crypto.getRandomValues(new Uint8Array(16));
+    const userName=currentUser?.name||'user';
+    const rpId=location.hostname&&location.hostname!==''?location.hostname:'localhost';
+
+    // Gunakan create() untuk trigger biometric prompt HP tanpa perlu credential tersimpan
+    const cred=await navigator.credentials.create({
+      publicKey:{
+        challenge,
+        rp:{name:'SnapAbsen',id:rpId},
+        user:{id:userId,name:userName,displayName:userName},
+        pubKeyCredParams:[
+          {alg:-7,type:'public-key'},   // ES256
+          {alg:-257,type:'public-key'}  // RS256
+        ],
+        authenticatorSelection:{
+          authenticatorAttachment:'platform',  // wajib pakai authenticator bawaan HP
+          userVerification:'required',          // wajib verifikasi biometrik (fingerprint/face)
+          residentKey:'discouraged'
+        },
+        timeout:60000
+      }
+    });
+
+    if(cred){
+      verifMethod='fingerprint';verifDone=true;
+      showVerifStatus('success','✅ Fingerprint terverifikasi!');
+      btn.innerHTML='<i class="fas fa-check"></i> Terverifikasi';
+      const btnSubmit=document.getElementById('btn-submit-absen');
+      btnSubmit.disabled=false;btnSubmit.style.opacity='1';
+      btnSubmit.style.background='var(--green)';
+    }
+  }catch(err){
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint';
+    if(err.message==='not_supported'||err.message==='not_available'){
+      showVerifStatus('warning','⚠️ Fingerprint tidak tersedia di perangkat ini. Silakan gunakan Selfie.');
+      setTimeout(switchToSelfieVerif,1800);
+    }else if(err.name==='NotAllowedError'||err.name==='AbortError'){
+      showVerifStatus('error','❌ Verifikasi dibatalkan. Silakan coba lagi.');
+    }else if(err.name==='InvalidStateError'){
+      // Credential sudah ada — fallback ke get()
+      showVerifStatus('warning','⚠️ Mencoba metode alternatif...');
+      setTimeout(()=>doFingerprintVerifGet(),500);
+    }else{
+      showVerifStatus('warning','⚠️ Fingerprint tidak berhasil. Gunakan Selfie sebagai alternatif.');
+      setTimeout(switchToSelfieVerif,1800);
+    }
+  }
+}
+
+// Fallback: gunakan get() jika credential sudah terdaftar
+async function doFingerprintVerifGet(){
+  const btn=document.getElementById('btn-do-fingerprint');
+  try{
+    const challenge=crypto.getRandomValues(new Uint8Array(32));
+    const rpId=location.hostname&&location.hostname!==''?location.hostname:'localhost';
+    const cred=await navigator.credentials.get({
+      publicKey:{challenge,userVerification:'required',timeout:60000,rpId}
+    });
+    if(cred){
+      verifMethod='fingerprint';verifDone=true;
+      showVerifStatus('success','✅ Fingerprint terverifikasi!');
+      btn.innerHTML='<i class="fas fa-check"></i> Terverifikasi';
+      const btnSubmit=document.getElementById('btn-submit-absen');
+      btnSubmit.disabled=false;btnSubmit.style.opacity='1';btnSubmit.style.background='var(--green)';
+    }
+  }catch(e){
+    showVerifStatus('warning','⚠️ Fingerprint tidak berhasil. Gunakan Selfie.');
+    setTimeout(switchToSelfieVerif,1800);
+  }
+}
+
+function showVerifStatus(type,msg){
+  const el=document.getElementById('verif-status');
+  el.style.display='block';
+  el.style.background=type==='success'?'#f0fdf4':type==='warning'?'#fffbeb':'#fef2f2';
+  el.style.border='1.5px solid '+(type==='success'?'#bbf7d0':type==='warning'?'#fde68a':'#fecaca');
+  el.style.color=type==='success'?'#16a34a':type==='warning'?'#b45309':'#dc2626';
+  el.textContent=msg;
+}
+
+function switchToSelfieVerif(){
+  document.getElementById('verif-fingerprint-section').style.display='none';
+  document.getElementById('verif-selfie-section').style.display='block';
+  const vstatus=document.getElementById('verif-status');vstatus.style.display='none';
+  setTimeout(startCamera,300);
+}
+
+function switchToFingerprintVerif(){
+  if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
+  resetCameraUI();capturedPhoto=null;
+  document.getElementById('verif-fingerprint-section').style.display='block';
+  document.getElementById('verif-selfie-section').style.display='none';
+  const vstatus=document.getElementById('verif-status');vstatus.style.display='none';
+  const btnSubmit=document.getElementById('btn-submit-absen');
+  btnSubmit.disabled=true;btnSubmit.style.opacity='.5';
+  document.getElementById('btn-do-fingerprint').disabled=false;
+  document.getElementById('btn-do-fingerprint').innerHTML='<i class="fas fa-fingerprint"></i> Verifikasi dengan Fingerprint';
+}
+
+async function doSubmitAbsen(){
+  if(!selectedAbsenType){showToast('Pilih jenis absen dulu','warning');return;}
+  if(!verifDone&&!capturedPhoto){showToast('Selesaikan verifikasi dulu','warning');return;}
+  await submitAbsen(selectedAbsenType);
 }
 function initAbsenMap(){
   setTimeout(()=>{
@@ -1680,7 +1758,16 @@ function capturePhoto(){
   capturedPhoto=c.toDataURL('image/jpeg',.65);c.style.display='block';v.style.display='none';
   document.getElementById('cam-overlay').style.display='none';document.getElementById('cam-taken-badge').style.display='block';
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  document.getElementById('btn-step2-next').disabled=false;showToast('Foto berhasil diambil!','success');
+  // Jika di step verifikasi selfie, enable submit button
+  const step3Active=document.getElementById('step-3').classList.contains('active');
+  if(step3Active){
+    verifMethod='selfie';verifDone=true;
+    showVerifStatus('success','✅ Foto selfie berhasil diambil!');
+    const btnSubmit=document.getElementById('btn-submit-absen');
+    btnSubmit.disabled=false;btnSubmit.style.opacity='1';
+    btnSubmit.style.background='#16a34a';
+  }
+  showToast('Foto berhasil diambil!','success');
 }
 function resetCameraUI(){
   document.getElementById('camera-video').style.display='none';document.getElementById('camera-canvas').style.display='none';
@@ -1697,6 +1784,12 @@ function buildConfirmSummary(){
   if(currentLocation)document.getElementById('confirm-loc').textContent=currentLocation.lat.toFixed(5)+', '+currentLocation.lng.toFixed(5)+' (±'+Math.round(currentLocation.acc||0)+'m)';
   if(officeConfig)document.getElementById('confirm-radius-txt').textContent='Dalam zona '+(officeConfig.nama||'kantor')+' (radius '+officeConfig.radius+'m)';
   else document.getElementById('confirm-radius-row').innerHTML='<i class="fas fa-info-circle" style="color:var(--yellow);width:14px"></i><span style="color:var(--yellow)">Radius belum dikonfigurasi</span>';
+  // Tampilkan jenis absen yang dipilih
+  const jenisEl=document.getElementById('confirm-jenis-txt');
+  if(jenisEl&&selectedAbsenType){jenisEl.textContent=selectedAbsenType==='masuk'?'Absen Masuk':'Absen Keluar';jenisEl.style.color=selectedAbsenType==='masuk'?'var(--green)':'var(--accent)';}
+  // Update submit label
+  const lbl=document.getElementById('btn-submit-label');
+  if(lbl)lbl.textContent='Submit '+(selectedAbsenType==='masuk'?'Absen Masuk':'Absen Keluar');
   if(capturedPhoto){const th=document.getElementById('thumb-canvas');const img=new Image();img.src=capturedPhoto;img.onload=()=>th.getContext('2d').drawImage(img,0,0,60,60);}
 }
 // Debug logger — tampil di layar HP
@@ -1719,14 +1812,6 @@ function dbgLog(msg){
   box.scrollTop=box.scrollHeight;
 }
 async function submitAbsen(type){
-  // Validasi ganda koordinat kantor sebelum simpan
-  if(currentLocation){
-    const distCheck=getDistance(currentLocation.lat,currentLocation.lng,FIXED_LAT,FIXED_LNG);
-    if(distCheck>FIXED_RADIUS){
-      showToast('Gagal: Anda di luar zona absensi kantor ('+Math.round(distCheck)+' m dari kantor)','error');
-      return;
-    }
-  }
   const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   // Disable semua tombol absen agar tidak double-submit
   const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
@@ -1735,7 +1820,7 @@ async function submitAbsen(type){
   dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
     await saveAbsenToFirebase({
-      type, time:t, date:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`,
+      type, time:t, date:now.toISOString().split('T')[0],
       lat:currentLocation?.lat, lng:currentLocation?.lng,
       accuracy:currentLocation?.acc,
       fakeGpsScore:currentLocation?.fakeScore||0,
@@ -2225,31 +2310,33 @@ async function savePassword(){
 // RADIUS
 function openRadiusModal(){if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat mengatur radius','error');return;}(function(){const _m=document.getElementById('modal-radius');_m.style.display='';_m.classList.add('open');})();setTimeout(initRadiusMap,200);}
 function closeRadiusModal(){document.getElementById('modal-radius').classList.remove('open');}
-// ===== KOORDINAT KANTOR TERKUNCI =====
-const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20,FIXED_NAMA='Jalan Pucang Anom Timur III No. 12';
 function initRadiusMap(){
   if(radiusMapObj){radiusMapObj.invalidateSize();return;}
+  const DEFAULT_LAT=-7.275700,DEFAULT_LNG=112.762900,DEFAULT_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
+  const dLat=officeConfig?.lat||DEFAULT_LAT,dLng=officeConfig?.lng||DEFAULT_LNG,dR=officeConfig?.radius||200;
   radiusMapObj=L.map('radius-map',{zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(radiusMapObj);
-  radiusMapObj.setView([FIXED_LAT,FIXED_LNG],18);
-  radiusMarker=L.marker([FIXED_LAT,FIXED_LNG],{draggable:false}).addTo(radiusMapObj);
-  radiusCircleObj=L.circle([FIXED_LAT,FIXED_LNG],{radius:FIXED_RADIUS,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2}).addTo(radiusMapObj);
-  const latEl=document.getElementById('rk-lat'),lngEl=document.getElementById('rk-lng'),rEl=document.getElementById('rk-radius'),nEl=document.getElementById('rk-nama');
-  if(latEl){latEl.value=FIXED_LAT.toFixed(6);latEl.readOnly=true;latEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
-  if(lngEl){lngEl.value=FIXED_LNG.toFixed(6);lngEl.readOnly=true;lngEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
-  if(rEl){rEl.value=FIXED_RADIUS;rEl.readOnly=true;rEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
-  if(nEl){nEl.value=FIXED_NAMA;nEl.readOnly=true;nEl.style.cssText+='background:#f1f5f9;color:#64748b;cursor:not-allowed';}
+  radiusMapObj.setView([dLat,dLng],16);
+  radiusMarker=L.marker([dLat,dLng],{draggable:true}).addTo(radiusMapObj);
+  radiusCircleObj=L.circle([dLat,dLng],{radius:dR,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2}).addTo(radiusMapObj);
+  radiusMarker.on('dragend',()=>{const p=radiusMarker.getLatLng();radiusCircleObj.setLatLng([p.lat,p.lng]);document.getElementById('rk-lat').value=p.lat.toFixed(6);document.getElementById('rk-lng').value=p.lng.toFixed(6);});
+  radiusMapObj.on('click',e=>{radiusMarker.setLatLng(e.latlng);radiusCircleObj.setLatLng(e.latlng);document.getElementById('rk-lat').value=e.latlng.lat.toFixed(6);document.getElementById('rk-lng').value=e.latlng.lng.toFixed(6);});
+  document.getElementById('rk-lat').value=dLat.toFixed(6);document.getElementById('rk-lng').value=dLng.toFixed(6);
+  document.getElementById('rk-radius').value=dR;
+  document.getElementById('rk-nama').value=officeConfig?.nama||'';
+  // Pre-fill alamat jika sudah tersimpan
   setTimeout(prefillOfficeAddress, 100);
 }
-function updateRadiusSlider(){/* radius terkunci, tidak bisa diubah */if(radiusCircleObj)radiusCircleObj.setRadius(FIXED_RADIUS);}
-function getOfficeLocation(){showToast('Koordinat kantor sudah terkunci','info');}
+function updateRadiusSlider(){let r=parseInt(document.getElementById('rk-radius').value)||200;if(r<3)r=3;if(r>2000)r=2000;if(radiusCircleObj)radiusCircleObj.setRadius(r);}
+function getOfficeLocation(){navigator.geolocation.getCurrentPosition(p=>{const la=p.coords.latitude,lo=p.coords.longitude;radiusMapObj.setView([la,lo],17);radiusMarker.setLatLng([la,lo]);radiusCircleObj.setLatLng([la,lo]);document.getElementById('rk-lat').value=la.toFixed(6);document.getElementById('rk-lng').value=lo.toFixed(6);showToast('GPS ditemukan!','success');},()=>showToast('Gagal GPS','error'));}
 function saveRadius(){
-  // Koordinat terkunci — selalu gunakan FIXED_LAT/LNG/RADIUS
-  const nama=FIXED_NAMA,lat=FIXED_LAT,lng=FIXED_LNG,radius=FIXED_RADIUS;
-  const address='Jalan Pucang Anom Timur III No. 12, Surabaya';
+  const nama=document.getElementById('rk-nama').value.trim()||'Kantor',lat=parseFloat(document.getElementById('rk-lat').value),lng=parseFloat(document.getElementById('rk-lng').value),radius=parseInt(document.getElementById('rk-radius').value);
+  if(isNaN(lat)||isNaN(lng)){showToast('Koordinat tidak valid','error');return;}
+  const addrEl=document.getElementById('rk-selected-addr-text');
+  const address=(addrEl&&addrEl.textContent.trim())||document.getElementById('rk-alamat').value.trim()||'';
   officeConfig={lat,lng,radius,nama,address};localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
-  updateRadiusDesc();closeRadiusModal();showToast('Konfigurasi kantor tersimpan (radius '+radius+' m)','success');
+  updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
 }
 function updateRadiusDesc(){
   const el=document.getElementById('radius-desc');
@@ -2979,7 +3066,7 @@ function renderKalender(uid, bulan, tahun) {
   const uJadwal = jadwalData[uid] || {};
   const firstDay = new Date(tahun, bulan-1, 1).getDay();
   const daysInMonth = new Date(tahun, bulan, 0).getDate();
-  const _td=new Date();const today=`${_td.getFullYear()}-${String(_td.getMonth()+1).padStart(2,'0')}-${String(_td.getDate()).padStart(2,'0')}`;
+  const today = new Date().toISOString().split('T')[0];
   let html = '<div class="jadwal-grid">';
   HARI.forEach(h => { html += `<div class="jadwal-day-header">${h}</div>`; });
   for (let i = 0; i < firstDay; i++) html += '<div class="jadwal-day jd-empty"></div>';
@@ -3129,7 +3216,7 @@ async function salinJadwal(uid) {
 // --- JADWAL HARI INI untuk karyawan (di beranda) ---
 async function loadMyJadwalHariIni() {
   if (!firebaseDb || !currentUser) return;
-  const _tj=new Date();const today=`${_tj.getFullYear()}-${String(_tj.getMonth()+1).padStart(2,'0')}-${String(_tj.getDate()).padStart(2,'0')}`;
+  const today = new Date().toISOString().split('T')[0];
   const bulanKey = today.substring(0, 7);
   try {
     const snap = await firebaseDb.collection('jadwal')
