@@ -1135,6 +1135,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 <div id="toast"></div>
 <script>
+let toastTimer;
+
 // STATE
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
 let absenMap=null,absenMarker=null,absenCircle=null;
@@ -1434,15 +1436,15 @@ function openAbsenModal(){
   el.classList.add('open');
   goToStep(1);initAbsenMap();
 }
+let selectedAbsenType=null;
+let verifMethod=null;
+let verifDone=false;
+
 function closeAbsenModal(){
   document.getElementById('modal-absen').classList.remove('open');
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;selectedAbsenType=null;verifMethod=null;verifDone=false;
 }
-let selectedAbsenType=null; // 'masuk' atau 'pulang'
-let verifMethod=null; // 'fingerprint' atau 'selfie'
-let verifDone=false;
-
 function goToStep(n){
   document.querySelectorAll('.absen-step-content').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-'+n).classList.add('active');
@@ -3841,7 +3843,6 @@ async function setUserRole(uidOrEmail, role){
 }
 window.setUserRole = setUserRole; // expose ke console
 // TOAST
-let toastTimer;
 function showToast(msg,type='info'){
   const el=document.getElementById('toast');el.textContent=msg;
   el.className='show '+(type==='success'?'success':type==='error'?'error':type==='warning'?'warning':'');
