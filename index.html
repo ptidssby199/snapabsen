@@ -2670,7 +2670,7 @@ function testFirebase(){
   fetch(`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents?key=${key}`).then(r=>{if(r.status===200||r.status===404){st.className='fb-status connected';txt.textContent='✓ Berhasil ke: '+pid;showToast('Koneksi berhasil!','success');}else throw new Error(r.status);}).catch(()=>{st.className='fb-status disconnected';txt.textContent='Gagal — periksa API Key & Project ID';showToast('Test gagal','error');});
 }
 function loadFirebaseSDK(cfg){
-  function loadScript(src){
+  async function loadScript(src){
     return new Promise((res,rej)=>{
       if(document.querySelector('script[src="'+src+'"]')){res();return;}
       const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);
@@ -3175,7 +3175,7 @@ async function setTolMode(mode){
   }
 }
 
-function saveShift() {
+async function saveShift() {
   const nama = document.getElementById('sf-nama').value.trim();
   const tipe = document.getElementById('sf-tipe').value;
   const masuk = document.getElementById('sf-masuk').value;
@@ -3503,7 +3503,7 @@ async function applyCopyMassal(){
 }
 // ===== END COPY MASSAL =====
 
-function salinJadwal(uid) {
+async function salinJadwal(uid) {
   const options = BULAN_LABEL.map((b,i) => (i+1)+'. '+b).join('\n');
   const input = prompt('Salin jadwal ke bulan berapa?\n\n' + options + '\n\nKetik angka bulan (1-12):');
   if (!input) return;
