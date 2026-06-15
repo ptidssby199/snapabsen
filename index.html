@@ -334,6 +334,26 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .sb-malam{background:var(--primary-light);color:var(--primary);}
 .sb-off{background:#f1f5f9;color:var(--text-muted);}
 .sb-custom{background:var(--green-light);color:var(--green);}
+.modal-copy-massal{display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center;}
+.modal-copy-massal.open{display:flex;}
+.copy-massal-sheet{background:var(--bg);border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
+.copy-massal-sheet h3{font-size:1rem;font-weight:800;margin-bottom:4px;}
+.copy-massal-sheet .cms-sub{font-size:.78rem;color:var(--text-muted);margin-bottom:16px;}
+.cm-section{margin-bottom:14px;}
+.cm-label{font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.cm-select{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem;outline:none;background:var(--card);}
+.cm-select:focus{border-color:#0d9488;}
+.cm-karyawan-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:8px;}
+.cm-karyawan-item{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background .15s;}
+.cm-karyawan-item:hover{background:var(--primary-light);}
+.cm-karyawan-item input[type=checkbox]{width:16px;height:16px;accent-color:#0d9488;cursor:pointer;flex-shrink:0;}
+.cm-karyawan-item label{font-size:.85rem;font-weight:600;cursor:pointer;flex:1;}
+.cm-karyawan-item small{font-size:.7rem;color:var(--text-muted);}
+.btn-cm-apply{width:100%;padding:13px;background:#0d9488;border:none;border-radius:10px;color:#fff;font-weight:800;font-family:'Plus Jakarta Sans',sans-serif;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.btn-cm-cancel{width:100%;padding:10px;background:transparent;border:1.5px solid var(--border);border-radius:10px;color:var(--text-muted);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;font-size:.85rem;cursor:pointer;margin-top:8px;}
+.cm-day-toggle{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
+.cm-day-btn{padding:6px 2px;border:1.5px solid var(--border);border-radius:6px;font-size:.68rem;font-weight:700;cursor:pointer;text-align:center;background:var(--card);color:var(--text-muted);font-family:'Plus Jakarta Sans',sans-serif;transition:all .15s;}
+.cm-day-btn.active{background:#0d9488;border-color:#0d9488;color:#fff;}
 .shift-actions{display:flex;gap:6px;}
 .btn-shift-edit{padding:5px 10px;background:var(--primary-light);border:1.5px solid var(--primary);border-radius:7px;color:var(--primary);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
 .btn-shift-del{padding:5px 10px;background:var(--red-light);border:1.5px solid var(--red);border-radius:7px;color:var(--red);font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;}
@@ -637,6 +657,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <input type="number" id="jad-tahun" value="2026" min="2020" max="2099" style="max-width:80px">
         <button class="btn-jadwal-load" onclick="loadJadwal()"><i class="fas fa-search"></i> Tampilkan</button>
         <button class="btn-jadwal-tambah" onclick="openShiftModal()"><i class="fas fa-plus"></i> Shift</button>
+        <button class="btn-jadwal-tambah" onclick="openCopyMassal()" style="background:#0d9488;color:#fff;border-color:#0d9488"><i class="fas fa-copy"></i> Copy Massal</button>
       </div>
 
       <!-- Daftar shift template -->
@@ -818,7 +839,25 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <div class="ep-group"><label><i class="fas fa-sign-in-alt" style="color:var(--green)"></i> Jam Masuk *</label><input type="time" id="sf-masuk"></div>
           <div class="ep-group"><label><i class="fas fa-sign-out-alt" style="color:var(--accent)"></i> Jam Pulang *</label><input type="time" id="sf-pulang"></div>
         </div>
-        <div class="ep-group"><label><i class="fas fa-clock" style="color:var(--yellow)"></i> Toleransi Terlambat (menit)</label><input type="number" id="sf-toleransi" placeholder="15" min="0" max="120" value="15"></div>
+        <div class="ep-group">
+          <label><i class="fas fa-clock" style="color:var(--yellow)"></i> Toleransi Terlambat</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div id="btn-tol-ada" onclick="setTolMode('ada')" style="flex:1;padding:10px;border-radius:8px;border:2px solid #0d9488;background:#f0fdfa;color:#0d9488;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;cursor:pointer;text-align:center;transition:all .15s">
+              <i class="fas fa-clock"></i><br><span style="font-size:.72rem">Ada Toleransi</span>
+            </div>
+            <div id="btn-tol-nol" onclick="setTolMode('nol')" style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--card);color:var(--text-muted);font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;font-size:.82rem;cursor:pointer;text-align:center;transition:all .15s">
+              <i class="fas fa-ban"></i><br><span style="font-size:.72rem">Tanpa Toleransi</span>
+            </div>
+          </div>
+          <div id="sf-tol-wrap">
+            <input type="number" id="sf-toleransi" placeholder="15" min="1" max="120" value="15" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Plus Jakarta Sans',sans-serif;font-size:.88rem">
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">Keterlambatan akan ditoleransi hingga X menit setelah jam masuk</div>
+          </div>
+          <div id="sf-tol-nol-info" style="display:none;background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:.8rem;color:#dc2626;font-weight:600">
+            <i class="fas fa-exclamation-circle"></i> Telat 1 menit = langsung tercatat <b>TERLAMBAT</b>. Tidak ada toleransi sama sekali.
+          </div>
+          <input type="hidden" id="sf-no-toleransi" value="false">
+        </div>
       </div>
       <div class="ep-group"><label><i class="fas fa-align-left" style="color:#0d9488"></i> Keterangan</label><input type="text" id="sf-ket" placeholder="Opsional"></div>
       <div class="ep-actions">
@@ -826,6 +865,62 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <button class="btn-ep-save" style="background:#0d9488" onclick="saveShift()"><i class="fas fa-save"></i> Simpan Shift</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL COPY MASSAL -->
+<div id="modal-copy-massal" class="modal-copy-massal">
+  <div class="copy-massal-sheet">
+    <div class="modal-handle"></div>
+    <h3><i class="fas fa-copy" style="color:#0d9488"></i> Copy Shift ke Karyawan</h3>
+    <div class="cms-sub">Pilih shift template, hari kerja, dan karyawan tujuan. Jadwal akan disalin secara massal.</div>
+    <div class="cm-section">
+      <div class="cm-label">1. Pilih Shift Template</div>
+      <select id="cm-shift" class="cm-select" onchange="previewCmShift()"><option value="">— Pilih Shift —</option></select>
+      <div id="cm-shift-preview" style="display:none;margin-top:8px;padding:8px 10px;background:var(--primary-light);border-radius:8px;font-size:.78rem;color:var(--primary);font-weight:600"></div>
+    </div>
+    <div class="cm-section">
+      <div class="cm-label">2. Salin ke Bulan</div>
+      <div style="display:flex;gap:8px">
+        <select id="cm-bulan" class="cm-select">
+          <option value="1">Januari</option><option value="2">Februari</option><option value="3">Maret</option>
+          <option value="4">April</option><option value="5">Mei</option><option value="6">Juni</option>
+          <option value="7">Juli</option><option value="8">Agustus</option><option value="9">September</option>
+          <option value="10">Oktober</option><option value="11">November</option><option value="12">Desember</option>
+        </select>
+        <input type="number" id="cm-tahun" class="cm-select" value="2026" min="2020" max="2099" style="max-width:85px">
+      </div>
+    </div>
+    <div class="cm-section">
+      <div class="cm-label">3. Pilih Hari Kerja</div>
+      <div class="cm-day-toggle">
+        <div class="cm-day-btn active" data-day="1" onclick="toggleCmDay(this)">Sen</div>
+        <div class="cm-day-btn active" data-day="2" onclick="toggleCmDay(this)">Sel</div>
+        <div class="cm-day-btn active" data-day="3" onclick="toggleCmDay(this)">Rab</div>
+        <div class="cm-day-btn active" data-day="4" onclick="toggleCmDay(this)">Kam</div>
+        <div class="cm-day-btn active" data-day="5" onclick="toggleCmDay(this)">Jum</div>
+        <div class="cm-day-btn" data-day="6" onclick="toggleCmDay(this)">Sab</div>
+        <div class="cm-day-btn" data-day="0" onclick="toggleCmDay(this)">Min</div>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">Hari aktif = shift terpilih. Hari tidak aktif = libur (OFF).</div>
+    </div>
+    <div class="cm-section">
+      <div class="cm-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>4. Pilih Karyawan</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="cmSelectAll(true)" style="font-size:.7rem;padding:3px 8px;border:1px solid #0d9488;border-radius:4px;color:#0d9488;background:transparent;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700">Semua</button>
+          <button onclick="cmSelectAll(false)" style="font-size:.7rem;padding:3px 8px;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);background:transparent;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif">Hapus Pilihan</button>
+        </div>
+      </div>
+      <div class="cm-karyawan-list" id="cm-karyawan-list"><div style="font-size:.82rem;color:var(--text-muted);padding:8px;text-align:center">Load jadwal dulu untuk lihat daftar karyawan</div></div>
+      <div id="cm-selected-count" style="font-size:.75rem;color:var(--text-muted);margin-top:6px;text-align:right"></div>
+    </div>
+    <div id="cm-progress" style="display:none;margin-bottom:12px">
+      <div style="font-size:.78rem;font-weight:700;color:#0d9488;margin-bottom:6px" id="cm-progress-text">Menyalin jadwal...</div>
+      <div style="background:var(--border);border-radius:99px;height:6px"><div id="cm-progress-bar" style="background:#0d9488;height:6px;border-radius:99px;width:0%;transition:width .3s"></div></div>
+    </div>
+    <button class="btn-cm-apply" id="btn-cm-apply" onclick="applyCopyMassal()"><i class="fas fa-paper-plane"></i> Terapkan ke Karyawan Dipilih</button>
+    <button class="btn-cm-cancel" onclick="closeCopyMassal()">Batal</button>
   </div>
 </div>
 
@@ -2052,18 +2147,22 @@ function hitungTelat(masuk, uid, date) {
   const j = (laporanJadwalMap[uid]||{})[date];
   const shift = j ? allShifts.find(s=>s.id===j.shiftId) : null;
   const batasMasuk = (j && j.masuk) || shift?.masuk || '08:00';
-  const toleransi = parseInt(shift?.toleransi||0);
+  const noToleransi = shift?.noToleransi===true || shift?.noToleransi==='true';
+  const toleransi = noToleransi ? 0 : parseInt(shift?.toleransi||0);
   if (!masuk || masuk==='—') return {telat:false, menit:0, batas:batasMasuk, shiftNama:shift?.nama||'—', display:'—'};
   // Hitung batas + toleransi
   const [bh,bm] = batasMasuk.split(':').map(Number);
   const batasTotal = bh*60 + bm + toleransi;
   const [mh,mm] = masuk.split(':').map(Number);
   const masukMenit = mh*60 + mm;
-  const selisih = masukMenit - batasTotal;
-  const telat = selisih > 0;
+  // Jika noToleransi: telat jika masuk > batas tepat (telat 1 menit = TERLAMBAT)
+  // Jika ada toleransi: telat jika melebihi batas + toleransi
+  const batasMurni = bh*60+bm;
+  const selisih = noToleransi ? (masukMenit - batasMurni) : (masukMenit - batasTotal);
+  const telat = selisih > 0; // noToleransi: telat jika 1 menit lewat; ada toleransi: telat jika lewat toleransi
   return {
     telat, menit: telat ? selisih : 0,
-    batas: batasMasuk + (toleransi>0 ? ' (+'+toleransi+' mnt)' : ''),
+    batas: batasMasuk + (noToleransi ? ' 🚫 No Tol' : toleransi>0 ? ' (+'+toleransi+' mnt)' : ''),
     shiftNama: shift?.nama || (j ? 'Custom' : '—'),
     display: telat ? (Math.floor(selisih/60)>0 ? Math.floor(selisih/60)+'j '+selisih%60+'m' : selisih+'m') : 'Tepat Waktu'
   };
@@ -3001,7 +3100,7 @@ function renderShiftList() {
           <div class="shift-name"><i class="fas ${tipeIcon[s.tipe]||'fa-clock'}" style="margin-right:6px"></i>${s.nama}</div>
           <div class="shift-time">
             <span class="shift-badge ${tipeBadge[s.tipe]||'sb-custom'}">${tipeLabel[s.tipe]||'Custom'}</span>
-            ${s.tipe==='off' ? '<span>Hari Libur</span>' : `<span><i class="fas fa-sign-in-alt" style="color:var(--green)"></i> ${s.masuk||'—'}</span><span><i class="fas fa-sign-out-alt" style="color:var(--accent)"></i> ${s.pulang||'—'}</span><span><i class="fas fa-exclamation-circle" style="color:var(--yellow)"></i> Toleransi ${s.toleransi||15} mnt</span>`}
+            ${s.tipe==='off' ? '<span>Hari Libur</span>' : `<span><i class="fas fa-sign-in-alt" style="color:var(--green)"></i> ${s.masuk||'—'}</span><span><i class="fas fa-sign-out-alt" style="color:var(--accent)"></i> ${s.pulang||'—'}</span>${(s.noToleransi===true||s.noToleransi==='true') ? '<span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:99px;font-size:.68rem;font-weight:700"><i class="fas fa-ban"></i> Tanpa Toleransi</span>' : '<span><i class="fas fa-exclamation-circle" style="color:var(--yellow)"></i> Toleransi '+s.toleransi+' mnt</span>'}`}
           </div>
           ${s.ket ? `<div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">${s.ket}</div>` : ''}
         </div>
@@ -3029,6 +3128,7 @@ function openShiftModal(id = null) {
   document.getElementById('sf-toleransi').value = '15';
   document.getElementById('sf-time-group').style.display = 'block';
   document.getElementById('shift-modal-title').textContent = id ? 'Edit Shift' : 'Tambah Template Shift';
+  setTolMode('ada'); // default ada toleransi
   if (id) {
     const s = allShifts.find(x => x.id === id);
     if (s) {
@@ -3039,6 +3139,9 @@ function openShiftModal(id = null) {
       document.getElementById('sf-toleransi').value = s.toleransi || 15;
       document.getElementById('sf-ket').value = s.ket || '';
       toggleShiftTimeGroup(s.tipe);
+      // Restore noToleransi state
+      const noTol = s.noToleransi===true || s.noToleransi==='true';
+      setTolMode(noTol ? 'nol' : 'ada');
     }
   }
   const sfEl=document.getElementById('modal-shift');
@@ -3053,16 +3156,37 @@ function toggleShiftTimeGroup(tipe) {
   document.getElementById('sf-time-group').style.display = tipe === 'off' ? 'none' : 'block';
 }
 
-async function saveShift() {
+async function setTolMode(mode){
+  const btnAda=document.getElementById('btn-tol-ada');
+  const btnNol=document.getElementById('btn-tol-nol');
+  const wrap=document.getElementById('sf-tol-wrap');
+  const info=document.getElementById('sf-tol-nol-info');
+  const hidden=document.getElementById('sf-no-toleransi');
+  if(mode==='nol'){
+    btnNol.style.borderColor='#dc2626';btnNol.style.background='#fef2f2';btnNol.style.color='#dc2626';
+    btnAda.style.borderColor='var(--border)';btnAda.style.background='var(--card)';btnAda.style.color='var(--text-muted)';
+    wrap.style.display='none';info.style.display='block';
+    hidden.value='true';
+  } else {
+    btnAda.style.borderColor='#0d9488';btnAda.style.background='#f0fdfa';btnAda.style.color='#0d9488';
+    btnNol.style.borderColor='var(--border)';btnNol.style.background='var(--card)';btnNol.style.color='var(--text-muted)';
+    wrap.style.display='block';info.style.display='none';
+    hidden.value='false';
+  }
+}
+
+function saveShift() {
   const nama = document.getElementById('sf-nama').value.trim();
   const tipe = document.getElementById('sf-tipe').value;
   const masuk = document.getElementById('sf-masuk').value;
   const pulang = document.getElementById('sf-pulang').value;
-  const toleransi = parseInt(document.getElementById('sf-toleransi').value) || 15;
+  const noTolEl=document.getElementById('sf-no-toleransi');
+  const noToleransi=noTolEl&&noTolEl.value==='true';
+  const toleransi=noToleransi?0:(parseInt(document.getElementById('sf-toleransi').value)||15);
   const ket = document.getElementById('sf-ket').value.trim();
   if (!nama) { showToast('Nama shift harus diisi','error'); return; }
   if (tipe !== 'off' && (!masuk || !pulang)) { showToast('Jam masuk dan pulang harus diisi','error'); return; }
-  const data = { nama, tipe, masuk: tipe==='off'?'':masuk, pulang: tipe==='off'?'':pulang, toleransi, ket, updatedAt: new Date().toISOString() };
+  const data = { nama, tipe, masuk: tipe==='off'?'':masuk, pulang: tipe==='off'?'':pulang, toleransi, noToleransi, ket, updatedAt: new Date().toISOString() };
   const btn = document.querySelector('#modal-shift .btn-ep-save');
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; btn.disabled = true;
   try {
@@ -3247,7 +3371,139 @@ async function saveJadwalHarian() {
 }
 
 // --- SALIN JADWAL ke bulan lain ---
-async function salinJadwal(uid) {
+async // ===== COPY MASSAL =====
+function openCopyMassal(){
+  if(!firebaseDb){showToast('Firebase belum terhubung','error');return;}
+  if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat copy massal','error');return;}
+  // Sync bulan/tahun dari toolbar
+  const b=document.getElementById('jad-bulan')?.value||new Date().getMonth()+1;
+  const t=document.getElementById('jad-tahun')?.value||new Date().getFullYear();
+  document.getElementById('cm-bulan').value=b;
+  document.getElementById('cm-tahun').value=t;
+  // Populate shift dropdown
+  const sel=document.getElementById('cm-shift');
+  sel.innerHTML='<option value="">— Pilih Shift —</option>';
+  (allShifts||[]).forEach(s=>{
+    const opt=document.createElement('option');
+    opt.value=s.id;opt.textContent=s.nama+(s.tipe==='off'?' (OFF)':s.jamMasuk?' ('+s.jamMasuk+' - '+s.jamPulang+')':'');
+    sel.appendChild(opt);
+  });
+  // Populate karyawan list
+  const list=document.getElementById('cm-karyawan-list');
+  const users=jadwalUsers||[];
+  if(!users.length){list.innerHTML='<div style="font-size:.82rem;color:var(--text-muted);padding:8px;text-align:center">Load jadwal dulu untuk lihat daftar karyawan</div>';}
+  else{
+    list.innerHTML=users.map(u=>`
+      <div class="cm-karyawan-item">
+        <input type="checkbox" id="cmk-${u.uid}" value="${u.uid}" checked onchange="updateCmCount()">
+        <label for="cmk-${u.uid}">${u.name||'—'}</label>
+        <small>${u.jabatan||u.userRole||'Karyawan'}</small>
+      </div>`).join('');
+    updateCmCount();
+  }
+  document.getElementById('cm-progress').style.display='none';
+  document.getElementById('btn-cm-apply').disabled=false;
+  document.getElementById('btn-cm-apply').innerHTML='<i class="fas fa-paper-plane"></i> Terapkan ke Karyawan Dipilih';
+  document.getElementById('modal-copy-massal').classList.add('open');
+}
+
+function closeCopyMassal(){document.getElementById('modal-copy-massal').classList.remove('open');}
+
+function previewCmShift(){
+  const shiftId=document.getElementById('cm-shift').value;
+  const prev=document.getElementById('cm-shift-preview');
+  if(!shiftId){prev.style.display='none';return;}
+  const s=(allShifts||[]).find(x=>x.id===shiftId);
+  if(!s){prev.style.display='none';return;}
+  prev.style.display='block';
+  prev.innerHTML=s.tipe==='off'
+    ?'<i class="fas fa-moon"></i> Hari Libur / OFF'
+    :`<i class="fas fa-clock"></i> ${s.nama} &nbsp;|&nbsp; Masuk: <b>${s.jamMasuk||'-'}</b> &nbsp;|&nbsp; Pulang: <b>${s.jamPulang||'-'}</b>`;
+}
+
+function toggleCmDay(el){el.classList.toggle('active');}
+
+function cmSelectAll(val){
+  document.querySelectorAll('#cm-karyawan-list input[type=checkbox]').forEach(c=>c.checked=val);
+  updateCmCount();
+}
+
+function updateCmCount(){
+  const total=document.querySelectorAll('#cm-karyawan-list input[type=checkbox]').length;
+  const checked=document.querySelectorAll('#cm-karyawan-list input[type=checkbox]:checked').length;
+  document.getElementById('cm-selected-count').textContent=checked+' dari '+total+' karyawan dipilih';
+}
+
+async function applyCopyMassal(){
+  const shiftId=document.getElementById('cm-shift').value;
+  if(!shiftId){showToast('Pilih shift template dulu','error');return;}
+  const bulan=parseInt(document.getElementById('cm-bulan').value);
+  const tahun=parseInt(document.getElementById('cm-tahun').value);
+  const checkedUids=[...document.querySelectorAll('#cm-karyawan-list input[type=checkbox]:checked')].map(c=>c.value);
+  if(!checkedUids.length){showToast('Pilih minimal 1 karyawan','error');return;}
+
+  // Kumpulkan hari aktif (0=Min,1=Sen,...,6=Sab)
+  const activeDays=new Set();
+  document.querySelectorAll('.cm-day-btn.active').forEach(el=>activeDays.add(parseInt(el.dataset.day)));
+
+  const shift=(allShifts||[]).find(s=>s.id===shiftId);
+  if(!shift){showToast('Shift tidak ditemukan','error');return;}
+
+  // Hitung jumlah hari dalam bulan
+  const daysInMonth=new Date(tahun,bulan,0).getDate();
+
+  // UI progress
+  const progDiv=document.getElementById('cm-progress');
+  const progBar=document.getElementById('cm-progress-bar');
+  const progText=document.getElementById('cm-progress-text');
+  const btn=document.getElementById('btn-cm-apply');
+  progDiv.style.display='block';btn.disabled=true;
+  btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyalin...';
+
+  const key=`${tahun}-${String(bulan).padStart(2,'0')}`;
+  let done=0;const total=checkedUids.length;
+
+  for(const uid of checkedUids){
+    const batch={};
+    for(let d=1;d<=daysInMonth;d++){
+      const date=new Date(tahun,bulan-1,d);
+      const dow=date.getDay(); // 0=Sun,1=Mon,...,6=Sat
+      const dayKey=String(d).padStart(2,'0');
+      if(activeDays.has(dow)){
+        batch[dayKey]={shiftId:shift.id,shiftNama:shift.nama,tipe:shift.tipe,masuk:shift.masuk||'',pulang:shift.pulang||'',toleransi:shift.toleransi||0,noToleransi:shift.noToleransi||false};
+      } else {
+        // Hari tidak aktif = OFF
+        const offShift=(allShifts||[]).find(s=>s.tipe==='off');
+        batch[dayKey]={shiftId:offShift?.id||'off',shiftNama:offShift?.nama||'Libur',tipe:'off',masuk:'',pulang:'',toleransi:0,noToleransi:false};
+      }
+    }
+    try{
+      await firebaseDb.collection('jadwal').doc(key).collection('users').doc(uid).set(batch,{merge:true});
+      if(!jadwalData[uid])jadwalData[uid]={};
+      Object.assign(jadwalData[uid],batch);
+    }catch(e){console.error('Error copy massal uid',uid,e);}
+    done++;
+    const pct=Math.round((done/total)*100);
+    progBar.style.width=pct+'%';
+    progText.textContent=`Menyalin... ${done}/${total} karyawan (${pct}%)`;
+  }
+
+  // Selesai
+  progText.textContent='✅ Selesai! '+done+' karyawan berhasil disalin.';
+  progBar.style.background='var(--green)';
+  btn.innerHTML='<i class="fas fa-check"></i> Selesai';
+  showToast('Jadwal berhasil disalin ke '+done+' karyawan','success');
+  // Refresh tampilan
+  setTimeout(()=>{
+    closeCopyMassal();
+    const b2=parseInt(document.getElementById('jad-bulan').value);
+    const t2=parseInt(document.getElementById('jad-tahun').value);
+    renderJadwalKaryawan(b2,t2);
+  },1500);
+}
+// ===== END COPY MASSAL =====
+
+function salinJadwal(uid) {
   const options = BULAN_LABEL.map((b,i) => (i+1)+'. '+b).join('\n');
   const input = prompt('Salin jadwal ke bulan berapa?\n\n' + options + '\n\nKetik angka bulan (1-12):');
   if (!input) return;
@@ -3341,7 +3597,8 @@ loadProfileStats = async function() {
         const j = jadwalHari[r.date];
         const shift = j ? allShifts.find(s => s.id === j.shiftId) : null;
         const batas = shift?.masuk || window._batasTelat || '08:30';
-        const tol = shift?.toleransi || 15;
+          const noTol = shift?.noToleransi===true||shift?.noToleransi==='true';
+  const tol = noTol ? 0 : (shift?.toleransi || 15);
         const [bh, bm] = batas.split(':').map(Number);
         const batasWithTol = String(bh).padStart(2,'0') + ':' + String(bm + tol).padStart(2,'0');
         if (r.time && r.time > batasWithTol) telat++;
