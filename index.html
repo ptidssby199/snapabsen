@@ -3373,8 +3373,8 @@ async function saveJadwalHarian() {
 }
 
 // --- SALIN JADWAL ke bulan lain ---
-async // ===== COPY MASSAL =====
-function openCopyMassal(){
+// ===== COPY MASSAL =====
+async function openCopyMassal(){
   if(!firebaseDb){showToast('Firebase belum terhubung','error');return;}
   if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat copy massal','error');return;}
   // Sync bulan/tahun dari toolbar
