@@ -3486,9 +3486,38 @@ async function applyCopyMassal(){
       }
     }
     try{
-      await firebaseDb.collection('jadwal').doc(key).collection('users').doc(uid).set(batch,{merge:true});
-      if(!jadwalData[uid])jadwalData[uid]={};
-      Object.assign(jadwalData[uid],batch);
+      // Gunakan struktur flat sama seperti saveJadwalHarian
+      // Setiap hari = 1 dokumen di collection('jadwal')
+      const writeBatch = firebaseDb.batch();
+      for(const [dayKey, dayData] of Object.entries(batch)){
+        const date = `${tahun}-${String(bulan).padStart(2,'0')}-${dayKey}`;
+        const docData = {
+          uid, date,
+          bulanKey: key,
+          shiftId: dayData.shiftId||null,
+          masuk: dayData.masuk||'',
+          pulang: dayData.pulang||'',
+          noToleransi: dayData.noToleransi||false,
+          toleransi: dayData.toleransi||0,
+          tipe: dayData.tipe||'',
+          shiftNama: dayData.shiftNama||'',
+          updatedAt: new Date().toISOString(),
+          updatedBy: currentUser?.uid||''
+        };
+        // Cek apakah dokumen sudah ada (cari dari jadwalData cache)
+        const existing = (jadwalData[uid]||{})[date];
+        let docRef;
+        if(existing?.docId){
+          docRef = firebaseDb.collection('jadwal').doc(existing.docId);
+          writeBatch.set(docRef, docData, {merge:true});
+        } else {
+          docRef = firebaseDb.collection('jadwal').doc();
+          writeBatch.set(docRef, docData);
+        }
+        if(!jadwalData[uid])jadwalData[uid]={};
+        jadwalData[uid][date]={shiftId:docData.shiftId,masuk:docData.masuk,pulang:docData.pulang,docId:docRef.id};
+      }
+      await writeBatch.commit();
     }catch(e){console.error('Error copy massal uid',uid,e);}
     done++;
     const pct=Math.round((done/total)*100);
