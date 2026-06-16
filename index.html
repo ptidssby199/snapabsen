@@ -1136,6 +1136,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div id="toast"></div>
 <script>
 let toastTimer;
+let currentDetailRows={};
+let allShifts=[];
+let jadwalData={};
+let laporanJadwalMap={};
+let jadwalUsers=[];
 
 // STATE
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
@@ -2097,7 +2102,7 @@ async function approveIzin(docId, action){
 
 // LAPORAN
 // laporanJadwalMap = {uid: {date: {shiftId, masuk, pulang}}}
-let laporanJadwalMap = {};
+// let laporanJadwalMap = {};
 
 async function loadLaporan(silent=false){
   if(!hasRole('manager')){showToast('Akses ditolak','error');return;}
@@ -3031,9 +3036,9 @@ async function saveRoleChange(){
 // ==============================================
 // JADWAL KERJA
 // ==============================================
-let allShifts = [];          // template shift
-let jadwalData = {};         // {uid: {date: {shiftId, masuk, pulang}}}
-let jadwalUsers = [];        // daftar user untuk kalender
+// let allShifts = [];          // template shift
+// let jadwalData = {};         // {uid: {date: {shiftId, masuk, pulang}}}
+// let jadwalUsers = [];        // daftar user untuk kalender
 let activeJadwalUid = null;
 let activeJadwalDate = null;
 let editingShiftId = null;
@@ -3320,7 +3325,8 @@ function updateShiftDetail(shiftId) {
   if (!s) { det.style.display = 'none'; return; }
   det.style.display = 'block';
   document.getElementById('jd-detail-nama').textContent = s.nama + ' (' + ({pagi:'Pagi',siang:'Siang',malam:'Malam',off:'Libur',custom:'Custom'}[s.tipe]||s.tipe) + ')';
-  document.getElementById('jd-detail-time').textContent = s.tipe === 'off' ? 'Hari Libur / Day Off' : `Masuk: ${s.masuk} | Pulang: ${s.pulang} | Toleransi: ${s.toleransi||15} mnt`;
+  const tolInfo = s.tipe==='off' ? 'Hari Libur / Day Off' : (s.noToleransi===true||s.noToleransi==='true') ? `Masuk: ${s.masuk} | Pulang: ${s.pulang} | ⛔ Tanpa Toleransi` : `Masuk: ${s.masuk} | Pulang: ${s.pulang} | Toleransi: ${s.toleransi||15} mnt`;
+  document.getElementById('jd-detail-time').textContent = tolInfo;
 }
 
 function closeJadwalDayModal() { document.getElementById('modal-jadwal-day').classList.remove('open'); }
@@ -3373,8 +3379,8 @@ async function saveJadwalHarian() {
 }
 
 // --- SALIN JADWAL ke bulan lain ---
-// ===== COPY MASSAL =====
-async function openCopyMassal(){
+async // ===== COPY MASSAL =====
+function openCopyMassal(){
   if(!firebaseDb){showToast('Firebase belum terhubung','error');return;}
   if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat copy massal','error');return;}
   // Sync bulan/tahun dari toolbar
@@ -3658,7 +3664,7 @@ async function loadProfileStats(){
 // DETAIL FOTO & LOKASI LAPORAN
 // ==============================================
 let detailMapObj = null;
-let currentDetailRows = {}; // cache grouped rows
+// let currentDetailRows = {}; // cache grouped rows
 
 function lihatDetail(btnOrUid, date, tab) {
   // Support both: lihatDetail(btn_element) and lihatDetail(uid, date, tab)
