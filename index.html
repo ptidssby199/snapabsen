@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<script>
+window.__firstErrorShown = false;
+window.addEventListener('error', function(e) {
+  if (window.__firstErrorShown) return;
+  window.__firstErrorShown = true;
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:#dc2626;color:#fff;padding:16px;font-family:monospace;font-size:13px;white-space:pre-wrap;max-height:80vh;overflow:auto;';
+  box.textContent = 'DEBUG ERROR PERTAMA - Message: ' + e.message + ' | File: ' + e.filename + ' | Line: ' + e.lineno + ' Col: ' + e.colno + ' | Stack: ' + (e.error && e.error.stack ? e.error.stack : '(no stack)');
+  function append() { document.body.prepend(box); }
+  if (document.body) append(); else document.addEventListener('DOMContentLoaded', append);
+}, true);
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SnapAbsen — Aplikasi Absensi</title>
