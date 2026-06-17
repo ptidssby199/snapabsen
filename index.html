@@ -1137,6 +1137,15 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div id="toast"></div>
 <script>
 let toastTimer;
+// Helper: tanggal hari ini berdasarkan waktu LOKAL device, bukan UTC.
+// Penting agar absen tengah malam (00:00-06:59 WIB) tidak tercatat di tanggal kemarin.
+function getLocalDateStr(d){
+  d = d || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 let currentDetailRows={};
 let allShifts=[];
 let jadwalData={};
@@ -1345,7 +1354,7 @@ function switchTab(name){
 // LOAD DATA
 async function loadMyAbsensiToday(){
   if(!firebaseDb||!currentUser)return;
-  const today=new Date().toISOString().split('T')[0];
+  const today=getLocalDateStr();
   try{
     const snap=await firebaseDb.collection('absensi').where('uid','==',currentUser.uid).where('date','==',today).get();
     const c=document.getElementById('activity-list');
@@ -1947,7 +1956,7 @@ async function submitAbsen(type){
   dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
     await saveAbsenToFirebase({
-      type, time:t, date:now.toISOString().split('T')[0],
+      type, time:t, date:getLocalDateStr(now),
       lat:currentLocation?.lat, lng:currentLocation?.lng,
       accuracy:currentLocation?.acc,
       fakeGpsScore:currentLocation?.fakeScore||0,
@@ -3289,7 +3298,7 @@ function renderKalender(uid, bulan, tahun) {
   const uJadwal = jadwalData[uid] || {};
   const firstDay = new Date(tahun, bulan-1, 1).getDay();
   const daysInMonth = new Date(tahun, bulan, 0).getDate();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
   let html = '<div class="jadwal-grid">';
   HARI.forEach(h => { html += `<div class="jadwal-day-header">${h}</div>`; });
   for (let i = 0; i < firstDay; i++) html += '<div class="jadwal-day jd-empty"></div>';
@@ -3601,8 +3610,7 @@ async function salinJadwal(uid) {
 // --- JADWAL HARI INI untuk karyawan (di beranda) ---
 async function loadMyJadwalHariIni() {
   if (!firebaseDb || !currentUser) return;
-  const today = new Date().toISOString().split('T')[0];
-  const bulanKey = today.substring(0, 7);
+  const today = getLocalDateStr();
   try {
     const snap = await firebaseDb.collection('jadwal')
       .where('uid','==',currentUser.uid)
