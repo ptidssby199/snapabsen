@@ -764,7 +764,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <div class="ep-group"><label><i class="fas fa-briefcase"></i> Jabatan</label><input type="text" id="uf-jabatan" placeholder="Staff"></div>
       </div>
       <div class="ep-group"><label><i class="fas fa-sitemap"></i> Departemen</label>
-        <select id="uf-departemen"><option value="">-- Pilih --</option><option>Finance&Accounting</option><option>HR</option><option>EMT</option><option>P&D</option><option>IT</option><option>Processing&Blending</option></select>
+        <select id="uf-departemen"><option value="">-- Pilih --</option><option>Keuangan</option><option>HRD</option><option>Operasional</option><option>Marketing</option><option>IT</option><option>Umum</option></select>
       </div>
       <div class="ep-section">Kontak & Akses</div>
       <div class="ep-group"><label><i class="fas fa-envelope"></i> Email * <small style="font-weight:400;color:var(--text-muted)">(digunakan untuk login)</small></label><input type="email" id="uf-email" placeholder="email@perusahaan.com"></div>
@@ -3647,17 +3647,20 @@ loadProfileStats = async function() {
   const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0');
   const start = `${y}-${m}-01`, end = `${y}-${m}-31`;
   try {
-    const snapMasuk = await firebaseDb.collection('absensi')
-      .where('uid','==',currentUser.uid).where('type','==','masuk')
-      .where('date','>=',start).where('date','<=',end).get();
-    if (!snapMasuk.empty && allShifts.length) {
+    const snapMasukAll2 = await firebaseDb.collection('absensi')
+      .where('uid','==',currentUser.uid).where('type','==','masuk').get();
+    const snapMasukDocs2 = snapMasukAll2.docs.filter(d=>{
+      const dt=d.data().date;
+      return dt && dt>=start && dt<=end;
+    });
+    if (snapMasukDocs2.length && allShifts.length) {
       // Hitung telat berdasarkan jadwal masing-masing hari
       let telat = 0;
       const jadwalSnap = await firebaseDb.collection('jadwal')
         .where('uid','==',currentUser.uid).where('bulanKey','==',`${y}-${m}`).get();
       const jadwalHari = {};
       jadwalSnap.docs.forEach(d => { const r = d.data(); jadwalHari[r.date] = r; });
-      snapMasuk.docs.forEach(d => {
+      snapMasukDocs2.forEach(d => {
         const r = d.data();
         const j = jadwalHari[r.date];
         const shift = j ? allShifts.find(s => s.id === j.shiftId) : null;
@@ -3686,32 +3689,37 @@ async function loadProfileStats(){
   const end=`${y}-${m}-31`;
   try{
     // Hitung hadir bulan ini (jumlah hari unik yang ada absen masuk)
-    const snapMasuk=await firebaseDb.collection('absensi')
+    // Catatan: filter tanggal dilakukan di JS (bukan di query) agar tidak perlu composite index Firestore
+    const snapMasukAll=await firebaseDb.collection('absensi')
       .where('uid','==',currentUser.uid)
       .where('type','==','masuk')
-      .where('date','>=',start)
-      .where('date','<=',end)
       .get();
-    const hadirDays=new Set(snapMasuk.docs.map(d=>d.data().date)).size;
+    const snapMasukDocs=snapMasukAll.docs.filter(d=>{
+      const dt=d.data().date;
+      return dt && dt>=start && dt<=end;
+    });
+    const hadirDays=new Set(snapMasukDocs.map(d=>d.data().date)).size;
     document.getElementById('ps-hadir').textContent=hadirDays;
     document.getElementById('stat-hadir-bln').textContent=hadirDays;
 
     // Hitung telat: masuk setelah jam 08:30
     const BATAS_TELAT='08:30';
     let telatCount=0;
-    snapMasuk.docs.forEach(d=>{
+    snapMasukDocs.forEach(d=>{
       const r=d.data();
       if(r.time && r.time>BATAS_TELAT) telatCount++;
     });
     document.getElementById('ps-telat').textContent=telatCount;
 
     // Hitung ijin bulan ini
-    const snapIjin=await firebaseDb.collection('izin')
+    const snapIjinAll=await firebaseDb.collection('izin')
       .where('uid','==',currentUser.uid)
-      .where('dari','>=',start)
-      .where('dari','<=',end)
       .get();
-    document.getElementById('ps-ijin').textContent=snapIjin.size;
+    const ijinCount=snapIjinAll.docs.filter(d=>{
+      const dr=d.data().dari;
+      return dr && dr>=start && dr<=end;
+    }).length;
+    document.getElementById('ps-ijin').textContent=ijinCount;
 
   }catch(e){ console.error('loadProfileStats error:',e); }
 }
