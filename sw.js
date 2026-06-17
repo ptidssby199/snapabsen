@@ -1,6 +1,6 @@
-// SnapAbsen Service Worker v1.0.0
-const CACHE_NAME = 'snapabsen-v2';
-const ASSETS_CACHE = 'snapabsen-assets-v2';
+// SnapAbsen Service Worker v1.0.1
+const CACHE_NAME = 'snapabsen-v3';
+const ASSETS_CACHE = 'snapabsen-assets-v3';
 
 // File lokal yang di-cache
 const STATIC_ASSETS = [
@@ -59,6 +59,10 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   if (url.hostname.includes('firebase') || url.hostname.includes('firestore') || url.hostname.includes('googleapis.com')) return;
 
+  // Skip map tile servers — biarkan lewat langsung ke network, jangan di-intercept SW
+  // (mencegah peta blank karena opaque response / gagal cache cross-origin)
+  if (url.hostname.includes('tile.openstreetmap.org') || url.hostname.endsWith('.tile.openstreetmap.org')) return;
+
   // CDN assets — Cache First
   if (url.hostname.includes('cdnjs') || url.hostname.includes('unpkg') || url.hostname.includes('fonts.g')) {
     event.respondWith(
@@ -97,7 +101,7 @@ self.addEventListener('fetch', event => {
 
   // Default — Cache First
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request))
+    caches.match(event.request).then(cached => cached || fetch(event.request).catch(() => cached))
   );
 });
 

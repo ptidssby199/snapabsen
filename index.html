@@ -3858,8 +3858,12 @@ function initDetailMap(lat, lng, name, time) {
   mapContainer.style.height = '220px';
   mapContainer.innerHTML = '';
   if (mapWrap) { mapWrap.style.height = '220px'; mapWrap.style.minHeight = '220px'; }
-  detailMapObj = L.map('rekap-map-detail', {zoomControl:true, attributionControl:false, preferCanvas:true});
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMapObj);
+  detailMapObj = L.map('rekap-map-detail', {zoomControl:true, attributionControl:true, preferCanvas:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    subdomains: ['a','b','c'],
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(detailMapObj);
   detailMapObj.setView([lat, lng], 17);
 
   // Marker karyawan
