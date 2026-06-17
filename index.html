@@ -679,6 +679,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <div class="profile-name" id="profile-name">—</div>
         <div class="profile-role" id="profile-role">—</div>
         <div class="profile-nip" id="profile-nip">NIK: —</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.75);text-align:center;margin-top:10px;margin-bottom:-2px;text-transform:uppercase;letter-spacing:.5px" id="profile-stats-bulan">Statistik —</div>
         <div class="profile-stats">
           <div class="profile-stat"><div class="ps-val" id="ps-hadir">0</div><div class="ps-label">Hadir</div></div>
           <div class="profile-stat"><div class="ps-val" id="ps-telat">0</div><div class="ps-label">Telat</div></div>
@@ -3687,6 +3688,9 @@ async function loadProfileStats(){
   const m=String(now.getMonth()+1).padStart(2,'0');
   const start=`${y}-${m}-01`;
   const end=`${y}-${m}-31`;
+  const namaBulanList=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const labelBulanEl=document.getElementById('profile-stats-bulan');
+  if(labelBulanEl) labelBulanEl.textContent=`Statistik ${namaBulanList[now.getMonth()]} ${y}`;
   try{
     // Hitung hadir bulan ini (jumlah hari unik yang ada absen masuk)
     // Catatan: filter tanggal dilakukan di JS (bukan di query) agar tidak perlu composite index Firestore
