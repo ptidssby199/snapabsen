@@ -1071,7 +1071,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <div style="font-weight:700;margin-bottom:2px"><i class="fas fa-map-marker-alt" style="margin-right:5px"></i><span id="rk-selected-addr-text"></span></div>
       </div>
       <div class="rk-group"><label>Nama Lokasi Kantor</label><input class="rk-input" type="text" id="rk-nama" placeholder="Kantor Pusat Surabaya"></div>
-      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-radius-input-wrap"><input type="number" id="rk-radius" min="20" max="20" step="1" value="20" class="rk-radius-number" readonly style="background:#f1f5f9;cursor:not-allowed;color:#64748b" placeholder="20"><span class="rk-radius-unit">meter</span></div><div style="font-size:.75rem;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="fas fa-lock" style="font-size:.65rem"></i> Radius dikunci: 20 m</div></div>
+      <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-radius-input-wrap"><input type="number" id="rk-radius" min="3" max="2000" step="1" value="20" class="rk-radius-number" oninput="updateRadiusSlider()" placeholder="20"><span class="rk-radius-unit">meter</span></div><div id="rk-radius-note" style="font-size:.75rem;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="fas fa-lock" style="font-size:.65rem"></i> Min: 3 m — Max: 2000 m</div></div>
       <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" value="-7.285319" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" value="112.759543" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"></div></div>
       <!-- Koordinat dikunci ke Jalan Pucang Anom Timur III No. 12, Surabaya --><div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#1d4ed8;display:flex;align-items:center;gap:6px"><i class="fas fa-lock"></i> Koordinat dikunci: Jalan Pucang Anom Timur III No. 12, Surabaya</div>
       <button class="btn-rk-save" onclick="saveRadius()"><i class="fas fa-save"></i> Simpan Konfigurasi</button>
@@ -2438,12 +2438,30 @@ async function savePassword(){
 }
 
 // RADIUS
-function openRadiusModal(){if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat mengatur radius','error');return;}(function(){const _m=document.getElementById('modal-radius');_m.style.display='';_m.classList.add('open');})();setTimeout(initRadiusMap,200);}
+function openRadiusModal(){
+  if(!hasRole('manager')){showToast('Hanya Admin/Manager yang dapat mengatur radius','error');return;}
+  const isAdmin=(currentUser?.userRole==='admin');
+  // Tampilkan/kunci radius input berdasarkan role
+  setTimeout(()=>{
+    const rInput=document.getElementById('rk-radius');
+    const rNote=document.getElementById('rk-radius-note');
+    if(rInput){
+      if(isAdmin){
+        rInput.readOnly=false;
+        rInput.style.background='';rInput.style.cursor='';rInput.style.color='';
+        if(rNote)rNote.innerHTML='<i class="fas fa-lock-open" style="font-size:.65rem;color:#16a34a"></i> <span style="color:#16a34a">Admin: radius dapat diubah (3–2000 m)</span>';
+      } else {
+        rInput.readOnly=true;
+        rInput.style.background='#f1f5f9';rInput.style.cursor='not-allowed';rInput.style.color='#64748b';
+        if(rNote)rNote.innerHTML='<i class="fas fa-lock" style="font-size:.65rem"></i> Radius hanya dapat diubah oleh Admin';
+      }
+    }
+  },250);(function(){const _m=document.getElementById('modal-radius');_m.style.display='';_m.classList.add('open');})();setTimeout(initRadiusMap,200);}
 function closeRadiusModal(){document.getElementById('modal-radius').classList.remove('open');}
 function initRadiusMap(){
   if(radiusMapObj){radiusMapObj.invalidateSize();return;}
   const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20,FIXED_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
-  const dLat=FIXED_LAT,dLng=FIXED_LNG,dR=FIXED_RADIUS;
+  const dLat=FIXED_LAT,dLng=FIXED_LNG,dR=officeConfig?.radius||20;
   radiusMapObj=L.map('radius-map',{zoomControl:true,attributionControl:false});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(radiusMapObj);
   radiusMapObj.setView([dLat,dLng],16);
@@ -2461,11 +2479,21 @@ function initRadiusMap(){
 function updateRadiusSlider(){let r=parseInt(document.getElementById('rk-radius').value)||200;if(r<3)r=3;if(r>2000)r=2000;if(radiusCircleObj)radiusCircleObj.setRadius(r);}
 function getOfficeLocation(){navigator.geolocation.getCurrentPosition(p=>{const la=p.coords.latitude,lo=p.coords.longitude;radiusMapObj.setView([la,lo],17);radiusMarker.setLatLng([la,lo]);radiusCircleObj.setLatLng([la,lo]);document.getElementById('rk-lat').value=la.toFixed(6);document.getElementById('rk-lng').value=lo.toFixed(6);showToast('GPS ditemukan!','success');},()=>showToast('Gagal GPS','error'));}
 function saveRadius(){
-  // Koordinat dan radius dikunci ke kantor tetap
-  const FIXED_LAT=-7.285319,FIXED_LNG=112.759543,FIXED_RADIUS=20;
+  // Koordinat dikunci, radius hanya bisa diubah oleh admin
+  const FIXED_LAT=-7.285319,FIXED_LNG=112.759543;
   const FIXED_ADDR='Jalan Pucang Anom Timur III No. 12, Surabaya';
   const nama=document.getElementById('rk-nama').value.trim()||'Kantor Pusat Surabaya';
-  officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:FIXED_RADIUS,nama,address:FIXED_ADDR};
+  // Cek role - hanya admin yang bisa ubah radius
+  const isAdmin=(currentUser?.userRole==='admin');
+  const inputRadius=parseInt(document.getElementById('rk-radius').value)||20;
+  const currentRadius=officeConfig?.radius||20;
+  const finalRadius=isAdmin?Math.max(3,Math.min(2000,inputRadius)):currentRadius;
+  if(!isAdmin && inputRadius!==currentRadius){
+    showToast('Hanya Admin yang dapat mengubah radius','error');
+    document.getElementById('rk-radius').value=currentRadius;
+    return;
+  }
+  officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:finalRadius,nama,address:FIXED_ADDR};
   localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
   updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
@@ -3805,7 +3833,12 @@ function lihatDetail(btnOrUid, date, tab) {
   modal.classList.add('open');
 
   // Inisialisasi peta detail setelah modal muncul
-  setTimeout(() => initDetailMap(row.lat, row.lng, row.name, row.masuk), 400);
+  // Scroll modal ke section peta dulu, lalu init
+  setTimeout(() => {
+    const wrap = document.getElementById('rekap-map-detail-wrap');
+    if (wrap) wrap.scrollIntoView({block:'nearest'});
+    initDetailMap(row.lat, row.lng, row.name, row.masuk);
+  }, 500);
 }
 
 function initDetailMap(lat, lng, name, time) {
@@ -3818,12 +3851,14 @@ function initDetailMap(lat, lng, name, time) {
     detailMapObj.remove();
     detailMapObj = null;
   }
-  // Pastikan container punya height sebelum Leaflet init
+  // Pastikan container siap sebelum Leaflet init
   const mapContainer = document.getElementById('rekap-map-detail');
-  mapContainer.style.height = '200px';
-  mapContainer.style.minHeight = '200px';
+  const mapWrap = document.getElementById('rekap-map-detail-wrap');
+  mapContainer.style.width = '100%';
+  mapContainer.style.height = '220px';
   mapContainer.innerHTML = '';
-  detailMapObj = L.map('rekap-map-detail', {zoomControl:true, attributionControl:false});
+  if (mapWrap) { mapWrap.style.height = '220px'; mapWrap.style.minHeight = '220px'; }
+  detailMapObj = L.map('rekap-map-detail', {zoomControl:true, attributionControl:false, preferCanvas:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMapObj);
   detailMapObj.setView([lat, lng], 17);
 
@@ -3849,10 +3884,14 @@ function initDetailMap(lat, lng, name, time) {
       color:'#94a3b8', weight:2, dashArray:'5'
     }).addTo(detailMapObj).bindPopup('Jarak: '+Math.round(dist)+' m');
   }
-  // Force invalidateSize after render - penting agar map muncul di modal
+  // Force invalidateSize agresif - penting karena ada di dalam overflow scroll container
+  detailMapObj.whenReady(() => {
+    detailMapObj.invalidateSize();
+    setTimeout(() => { if(detailMapObj) { detailMapObj.invalidateSize(); detailMapObj.setView([lat,lng],17); }}, 200);
+    setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 600);
+    setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 1200);
+  });
   detailMapObj.invalidateSize();
-  setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 300);
-  setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 800);
 }
 
 function tutupDetailModal() {
@@ -4055,7 +4094,9 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
       </div>
       <!-- Peta lokasi -->
       <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">📍 Lokasi Absen</div>
-      <div id="rekap-map-detail" style="width:100%;height:200px;min-height:200px;border-radius:10px;overflow:hidden;border:2px solid var(--border);margin-bottom:14px;background:#f1f5f9"></div>
+      <div id="rekap-map-detail-wrap" style="width:100%;height:220px;min-height:220px;border-radius:10px;overflow:hidden;border:2px solid var(--border);margin-bottom:14px;background:#f1f5f9;position:relative;z-index:1">
+        <div id="rekap-map-detail" style="width:100%;height:220px;position:absolute;top:0;left:0"></div>
+      </div>
       <!-- Foto Masuk -->
       <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">📸 Foto Selfie Masuk</div>
       <div class="rekap-foto-preview" id="rekap-foto-masuk">
