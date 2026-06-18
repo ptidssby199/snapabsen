@@ -2280,10 +2280,10 @@ function exportExcel(){
   const bulan=document.getElementById('lap-bulan'),tahun=document.getElementById('lap-tahun').value;
   const namaBulan=bulan.options[bulan.selectedIndex].text;
   const grouped={};
-  laporanData.forEach(r=>{const key=(r.uid||'x')+'|'+(r.date||'');if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat,lng:r.lng,photoMasuk:'',photoMasukIsBase64:false};if(r.type==='masuk'){grouped[key].masuk=r.time;grouped[key].lat=r.lat;grouped[key].lng=r.lng;const foto=r.photoURL||r.photoBase64||'';if(foto){grouped[key].photoMasuk=foto;grouped[key].photoMasukIsBase64=!r.photoURL&&!!r.photoBase64;}}if(r.type==='pulang')grouped[key].pulang=r.time;grouped[key].uid=r.uid;});
+  laporanData.forEach(r=>{const key=(r.uid||'x')+'|'+(r.date||'');if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat,lng:r.lng,photoMasuk:'',photoMasukIsBase64:false,photoPulang:'',photoPulangIsBase64:false};if(r.type==='masuk'){grouped[key].masuk=r.time;grouped[key].lat=r.lat;grouped[key].lng=r.lng;const foto=r.photoURL||r.photoBase64||'';if(foto){grouped[key].photoMasuk=foto;grouped[key].photoMasukIsBase64=!r.photoURL&&!!r.photoBase64;}}if(r.type==='pulang'){grouped[key].pulang=r.time;const fotoP=r.photoURL||r.photoBase64||'';if(fotoP){grouped[key].photoPulang=fotoP;grouped[key].photoPulangIsBase64=!r.photoURL&&!!r.photoBase64;}}grouped[key].uid=r.uid;});
   const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-  const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','Foto Masuk (URL/Base64)'];
+  const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','Foto Masuk (URL/Base64)','Foto Pulang (URL/Base64)'];
   const csvRows=[hdr.join(';')];
   rows.forEach((r,i)=>{
     const d=new Date(r.tanggal||'');const tgl=isNaN(d)?r.tanggal:d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
@@ -2295,7 +2295,8 @@ function exportExcel(){
     const st=r.masuk==='—'?'Tidak Hadir':r.pulang==='—'?'Belum Pulang':'Hadir';
     // Ambil foto dari grouped (sudah di-set saat iterasi laporanData)
     const photoURLExp=r.photoMasuk||'';
-    csvRows.push([i+1,r.nama,tgl,shiftNamaExp,batasExp,r.masuk,telatExp,r.pulang,dur,st,r.lat||'',r.lng||'',photoURLExp].join(';'));
+    const photoPulangExp=r.photoPulang||'';
+    csvRows.push([i+1,r.nama,tgl,shiftNamaExp,batasExp,r.masuk,telatExp,r.pulang,dur,st,r.lat||'',r.lng||'',photoURLExp,photoPulangExp].join(';'));
   });
   csvRows.push('');csvRows.push(['RINGKASAN','','','','','','','',''].join(';'));
   csvRows.push(['Total Karyawan',new Set(rows.map(r=>r.uid)).size,'','','','','','',''].join(';'));
@@ -2322,7 +2323,7 @@ function exportHtmlFoto(){
   const grouped={};
   laporanData.forEach(r=>{
     const key=(r.uid||'x')+'|'+(r.date||'');
-    if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat||'',lng:r.lng||'',foto:''};
+    if(!grouped[key])grouped[key]={uid:r.uid,nama:r.userName||'—',tanggal:r.date,masuk:'—',pulang:'—',lat:r.lat||'',lng:r.lng||'',foto:'',fotoPulang:''};
     if(r.type==='masuk'){
       grouped[key].masuk=r.time;
       grouped[key].lat=r.lat||'';
@@ -2330,7 +2331,11 @@ function exportHtmlFoto(){
       const f=r.photoURL||r.photoBase64||'';
       if(f)grouped[key].foto=f;
     }
-    if(r.type==='pulang')grouped[key].pulang=r.time;
+    if(r.type==='pulang'){
+      grouped[key].pulang=r.time;
+      const fp=r.photoURL||r.photoBase64||'';
+      if(fp)grouped[key].fotoPulang=fp;
+    }
     grouped[key].uid=r.uid;
   });
   const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
@@ -2352,6 +2357,9 @@ function exportHtmlFoto(){
     const fotoCell=r.foto
       ?'<img src="'+r.foto+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer" onclick="this.style.width=this.style.width===\'80px\'?\'240px\':\'80px\'" title="Klik untuk perbesar">'
       :'<span style="color:#94a3b8;font-size:.75rem">Tidak ada foto</span>';
+    const fotoPulangCell=r.fotoPulang
+      ?'<img src="'+r.fotoPulang+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer" onclick="this.style.width=this.style.width===\'80px\'?\'240px\':\'80px\'" title="Klik untuk perbesar">'
+      :'<span style="color:#94a3b8;font-size:.75rem">Tidak ada foto</span>';
     const mapCell=r.lat&&r.lng
       ?'<a href="https://maps.google.com/?q='+r.lat+','+r.lng+'" target="_blank" style="color:#0891b2;font-size:.75rem">📍 Lihat</a>'
       :'—';
@@ -2367,6 +2375,7 @@ function exportHtmlFoto(){
       <td style="text-align:center">${dur}</td>
       <td style="text-align:center">${st}</td>
       <td style="text-align:center">${fotoCell}</td>
+      <td style="text-align:center">${fotoPulangCell}</td>
       <td style="text-align:center">${mapCell}</td>
     </tr>`;
   });
@@ -2400,7 +2409,7 @@ function exportHtmlFoto(){
   <thead><tr>
     <th>No</th><th>Nama</th><th>Tanggal</th><th>Shift</th><th>Batas</th>
     <th>Masuk</th><th>Terlambat</th><th>Pulang</th><th>Durasi</th><th>Status</th>
-    <th>Foto Selfie</th><th>Lokasi</th>
+    <th>Foto Masuk</th><th>Foto Pulang</th><th>Lokasi</th>
   </tr></thead>
   <tbody>${tableRows}</tbody>
 </table>
