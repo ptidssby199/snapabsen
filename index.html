@@ -591,7 +591,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
         <input class="lap-search" type="text" id="lap-nama-filter" placeholder="Cari nama karyawan..." oninput="filterLaporanTable()">
         <button class="btn-laporan-load" onclick="loadLaporan()"><i class="fas fa-search"></i> Tampilkan Laporan</button>
         <div style="display:flex;gap:8px;">
-          <button class="btn-export-excel" style="flex:1" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Export CSV</button>
+          <button class="btn-export-excel" style="flex:1" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Export Excel</button>
           <button class="btn-export-excel" style="flex:1;background:var(--primary-light);border-color:var(--primary);color:var(--primary)" onclick="exportHtmlFoto()"><i class="fas fa-images"></i> Export + Foto</button>
         </div>
       </div>
@@ -2284,7 +2284,9 @@ function exportExcel(){
   const rows=Object.values(grouped).sort((a,b)=>a.tanggal>b.tanggal?1:-1);
   const M=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
   const hdr=['No','Nama Karyawan','Tanggal','Shift','Batas Masuk','Jam Masuk','Terlambat','Jam Pulang','Durasi','Status','Latitude','Longitude','Foto Masuk (URL/Base64)','Foto Pulang (URL/Base64)'];
-  const csvRows=[hdr.join(';')];
+  const esc=(s)=>String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  let bodyRows='';
   rows.forEach((r,i)=>{
     const d=new Date(r.tanggal||'');const tgl=isNaN(d)?r.tanggal:d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
     let dur='—';if(r.masuk!=='—'&&r.pulang!=='—'){const[mh,mm]=r.masuk.split(':').map(Number),[ph,pm]=r.pulang.split(':').map(Number),mn=(ph*60+pm)-(mh*60+mm);if(mn>0)dur=Math.floor(mn/60)+'j '+(mn%60)+'m';}
@@ -2293,25 +2295,72 @@ function exportExcel(){
     const batasExp = t2 ? t2.batas : '—';
     const telatExp = t2 ? (t2.telat ? '+'+t2.display : 'Tepat Waktu') : '—';
     const st=r.masuk==='—'?'Tidak Hadir':r.pulang==='—'?'Belum Pulang':'Hadir';
-    // Ambil foto dari grouped (sudah di-set saat iterasi laporanData)
     const photoURLExp=r.photoMasuk||'';
     const photoPulangExp=r.photoPulang||'';
-    csvRows.push([i+1,r.nama,tgl,shiftNamaExp,batasExp,r.masuk,telatExp,r.pulang,dur,st,r.lat||'',r.lng||'',photoURLExp,photoPulangExp].join(';'));
+    const bg=i%2===0?'#ffffff':'#f8fafc';
+    bodyRows+=`<tr style="background:${bg}">
+      <td style="text-align:center;border:1px solid #d1d5db">${i+1}</td>
+      <td style="border:1px solid #d1d5db">${esc(r.nama)}</td>
+      <td style="border:1px solid #d1d5db" x:fmt="@">${esc(tgl)}</td>
+      <td style="border:1px solid #d1d5db">${esc(shiftNamaExp)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db" x:fmt="@">${esc(batasExp)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db" x:fmt="@">${esc(r.masuk)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db">${esc(telatExp)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db" x:fmt="@">${esc(r.pulang)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db">${esc(dur)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db">${esc(st)}</td>
+      <td style="text-align:center;border:1px solid #d1d5db">${esc(r.lat||'')}</td>
+      <td style="text-align:center;border:1px solid #d1d5db">${esc(r.lng||'')}</td>
+      <td style="border:1px solid #d1d5db;font-size:9px">${esc(photoURLExp)}</td>
+      <td style="border:1px solid #d1d5db;font-size:9px">${esc(photoPulangExp)}</td>
+    </tr>`;
   });
-  csvRows.push('');csvRows.push(['RINGKASAN','','','','','','','',''].join(';'));
-  csvRows.push(['Total Karyawan',new Set(rows.map(r=>r.uid)).size,'','','','','','',''].join(';'));
+
+  const totalKaryawan=new Set(rows.map(r=>r.uid)).size;
   const telatCountExp=rows.filter(r=>r.masuk!=='—'&&hitungTelat(r.masuk,r.uid||'',r.tanggal||'').telat).length;
-  csvRows.push(['Hadir Masuk',rows.filter(r=>r.masuk!=='—').length,'','','','','','','','','',''].join(';'));
-  csvRows.push(['Terlambat',telatCountExp,'','','','','','','','','',''].join(';'));
-  csvRows.push(['Hadir Lengkap',rows.filter(r=>r.masuk!=='—'&&r.pulang!=='—').length,'','','','','','','','','',''].join(';'));
-  csvRows.push(['Tidak Hadir',rows.filter(r=>r.masuk==='—').length,'','','','','','','','','',''].join(';'));
-  csvRows.push(['Periode',namaBulan+' '+tahun,'','','','','','','','','',''].join(';'));
-  const csv='\uFEFF'+csvRows.join('\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const hadirMasuk=rows.filter(r=>r.masuk!=='—').length;
+  const hadirLengkap=rows.filter(r=>r.masuk!=='—'&&r.pulang!=='—').length;
+  const tidakHadir=rows.filter(r=>r.masuk==='—').length;
+  const colCount=hdr.length;
+
+  const summaryRow=(label,val)=>`<tr><td style="font-weight:700;border:1px solid #d1d5db">${esc(label)}</td><td style="border:1px solid #d1d5db" colspan="${colCount-1}">${esc(val)}</td></tr>`;
+
+  const html=`<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml>
+<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>Rekap Absensi</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>
+</xml><![endif]-->
+<style>
+  table{border-collapse:collapse;font-family:Calibri,Arial,sans-serif;font-size:11px}
+  td,th{padding:4px 6px}
+</style>
+</head>
+<body>
+<table>
+  <tr><td colspan="${colCount}" style="font-size:16px;font-weight:700;color:#ffffff;background:#7c3aed;text-align:center;padding:10px;border:1px solid #6d28d9">LAPORAN REKAP ABSENSI PT. INDONESIA DWI SEMBILAN</td></tr>
+  <tr><td colspan="${colCount}" style="font-size:11px;font-weight:600;text-align:center;color:#475569;padding:4px;border:1px solid #d1d5db">Periode: ${esc(namaBulan)} ${esc(tahun)} &nbsp;•&nbsp; Diekspor: ${esc(new Date().toLocaleString('id-ID'))}</td></tr>
+  <tr><td colspan="${colCount}" style="padding:2px;border:none"></td></tr>
+  <tr>${hdr.map(h=>`<th style="font-weight:700;color:#ffffff;background:#7c3aed;border:1px solid #6d28d9;text-align:center">${esc(h)}</th>`).join('')}</tr>
+  ${bodyRows}
+  <tr><td colspan="${colCount}" style="padding:4px;border:none"></td></tr>
+  <tr><td colspan="${colCount}" style="font-weight:700;font-size:13px;background:#ede9fe;color:#6d28d9;border:1px solid #d1d5db;padding:6px">RINGKASAN</td></tr>
+  ${summaryRow('Total Karyawan', totalKaryawan)}
+  ${summaryRow('Hadir Masuk', hadirMasuk)}
+  ${summaryRow('Terlambat', telatCountExp)}
+  ${summaryRow('Hadir Lengkap', hadirLengkap)}
+  ${summaryRow('Tidak Hadir', tidakHadir)}
+  ${summaryRow('Periode', namaBulan+' '+tahun)}
+</table>
+</body></html>`;
+
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
-  a.href=url;a.download='Rekap_Absensi_'+namaBulan+'_'+tahun+'.csv';
+  a.href=url;a.download='Rekap_Absensi_'+namaBulan+'_'+tahun+'.xls';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  showToast('Export berhasil! Buka file .csv dengan Excel','success');
+  showToast('Export berhasil! Buka file .xls dengan Excel','success');
 }
 
 function exportHtmlFoto(){
