@@ -448,6 +448,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 /* Modal foto detail */
 #modal-rekap-detail{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;}
 #modal-rekap-detail.open{display:flex;}
+#modal-edit-absen{display:none;position:fixed;inset:0;z-index:510;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;}
+#modal-edit-absen.open{display:flex;}
 .rekap-detail-box{background:var(--card);border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto;animation:fadeScale .25s ease;}
 .rekap-detail-header{background:linear-gradient(135deg,#7c3aed,#5b21b6);padding:16px 20px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;color:#fff;}
 .rekap-detail-header h3{font-size:.95rem;font-weight:700;}
@@ -604,7 +606,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
       <div class="rekap-table-wrap" id="rekap-table-wrap" style="display:none">
         <table class="rekap-table" id="rekap-table">
-          <thead><tr><th>No</th><th>Nama</th><th>Tanggal</th><th>Shift</th><th>Batas Masuk</th><th>Masuk</th><th>Terlambat</th><th>Pulang</th><th>Durasi</th><th>Status</th><th>Bukti</th></tr></thead>
+          <thead><tr><th>No</th><th>Nama</th><th>Tanggal</th><th>Shift</th><th>Batas Masuk</th><th>Masuk</th><th>Terlambat</th><th>Pulang</th><th>Durasi</th><th>Status</th><th>Bukti</th><th>Aksi</th></tr></thead>
           <tbody id="rekap-tbody"></tbody>
         </table>
       </div>
@@ -2271,10 +2273,92 @@ function renderLaporanTable(data){
       +'<td>'+dur+'</td>'
       +'<td>'+st+'</td>'
       +'<td style="min-width:80px">'+buktiHtml+'</td>'
+      +'<td><button class="rekap-edit-btn" style="padding:6px 10px;background:var(--accent-light);color:var(--accent);border:none;border-radius:6px;font-size:.72rem;font-weight:600;white-space:nowrap" '
+        +'onclick="openEditAbsen(this)" '
+        +'data-uid="'+safeUid+'" data-date="'+safeDate+'" data-name="'+r.name.replace(/"/g,'&quot;')+'" '
+        +'data-masuk="'+(r.masuk==='—'?'':r.masuk)+'" data-pulang="'+(r.pulang==='—'?'':r.pulang)+'" '
+        +'data-docid-masuk="'+(r.docIdMasuk||'')+'" data-docid-pulang="'+(r.docIdPulang||'')+'">'
+        +'<i class="fas fa-pen"></i> Edit</button></td>'
       +'</tr>';
   }).join('');
 }
 function filterLaporanTable(){if(laporanData.length)renderLaporanTable(laporanData);}
+
+// ==============================================
+// EDIT ABSENSI MANUAL OLEH ADMIN/MANAGER
+// ==============================================
+let editAbsenCtx=null;
+function openEditAbsen(btn){
+  editAbsenCtx={
+    uid: btn.dataset.uid,
+    date: btn.dataset.date,
+    name: btn.dataset.name,
+    docIdMasuk: btn.dataset.docidMasuk || '',
+    docIdPulang: btn.dataset.docidPulang || ''
+  };
+  document.getElementById('ea-nama').textContent = editAbsenCtx.name;
+  const d=new Date(editAbsenCtx.date||'');
+  const M=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  document.getElementById('ea-tanggal').textContent = isNaN(d) ? editAbsenCtx.date : d.getDate()+' '+M[d.getMonth()]+' '+d.getFullYear();
+  document.getElementById('ea-jam-masuk').value = btn.dataset.masuk || '';
+  document.getElementById('ea-jam-pulang').value = btn.dataset.pulang || '';
+  document.getElementById('modal-edit-absen').classList.add('open');
+}
+function tutupEditAbsen(){
+  document.getElementById('modal-edit-absen').classList.remove('open');
+  editAbsenCtx=null;
+}
+async function simpanEditAbsen(){
+  if(!editAbsenCtx||!firebaseDb){showToast('Tidak bisa menyimpan, koneksi database bermasalah','danger');return;}
+  const jamMasuk=document.getElementById('ea-jam-masuk').value;
+  const jamPulang=document.getElementById('ea-jam-pulang').value;
+  const {uid,date,docIdMasuk,docIdPulang}=editAbsenCtx;
+  if(!uid||!date){showToast('Data tidak lengkap','danger');return;}
+  try{
+    showToast('Menyimpan perubahan...','info');
+    // --- MASUK ---
+    if(jamMasuk){
+      if(docIdMasuk){
+        await firebaseDb.collection('absensi').doc(docIdMasuk).update({
+          time: jamMasuk, editedByAdmin: true, editedAt: firebase.firestore.FieldValue.serverTimestamp(), editedBy: currentUser?.name||'Admin'
+        });
+      } else {
+        await firebaseDb.collection('absensi').add({
+          type:'masuk', time:jamMasuk, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
+          lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
+          editedByAdmin:true, editedBy: currentUser?.name||'Admin',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    } else if(docIdMasuk){
+      // Jam masuk dikosongkan -> hapus record masuk yang sudah ada
+      await firebaseDb.collection('absensi').doc(docIdMasuk).delete();
+    }
+    // --- PULANG ---
+    if(jamPulang){
+      if(docIdPulang){
+        await firebaseDb.collection('absensi').doc(docIdPulang).update({
+          time: jamPulang, editedByAdmin: true, editedAt: firebase.firestore.FieldValue.serverTimestamp(), editedBy: currentUser?.name||'Admin'
+        });
+      } else {
+        await firebaseDb.collection('absensi').add({
+          type:'pulang', time:jamPulang, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
+          lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
+          editedByAdmin:true, editedBy: currentUser?.name||'Admin',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    } else if(docIdPulang){
+      await firebaseDb.collection('absensi').doc(docIdPulang).delete();
+    }
+    showToast('Absensi berhasil diperbarui','success');
+    tutupEditAbsen();
+    if(typeof loadLaporan==='function') loadLaporan(true);
+  }catch(e){
+    console.error('simpanEditAbsen error:',e);
+    showToast('Gagal menyimpan: '+e.message,'danger');
+  }
+}
 function exportExcel(){
   if(!laporanData.length){showToast('Muat laporan dulu sebelum export','warning');return;}
   const bulan=document.getElementById('lap-bulan'),tahun=document.getElementById('lap-tahun').value;
@@ -4014,7 +4098,7 @@ function showToast(msg,type='info'){
 }
 
 // CLOSE ON OVERLAY
-['modal-absen','modal-gantipass','modal-radius','modal-editprofil','modal-firebase','modal-role','modal-user-form','modal-delete-confirm','modal-shift','modal-jadwal-day','modal-rekap-detail'].forEach(id=>{
+['modal-absen','modal-gantipass','modal-radius','modal-editprofil','modal-firebase','modal-role','modal-user-form','modal-delete-confirm','modal-shift','modal-jadwal-day','modal-rekap-detail','modal-edit-absen'].forEach(id=>{
   const el=document.getElementById(id);
   el.addEventListener('click',function(e){
     if(e.target!==this)return;
@@ -4029,6 +4113,7 @@ function showToast(msg,type='info'){
     else if(id==='modal-shift')closeShiftModal();
     else if(id==='modal-jadwal-day')closeJadwalDayModal();
     else if(id==='modal-rekap-detail')tutupDetailModal();
+    else if(id==='modal-edit-absen')tutupEditAbsen();
   });
 });
 
@@ -4130,6 +4215,36 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
 </div>
 
 <!-- MODAL DETAIL FOTO & LOKASI LAPORAN -->
+<div id="modal-edit-absen">
+  <div class="rekap-detail-box" style="max-width:380px">
+    <div class="rekap-detail-header">
+      <h3>Edit Absensi</h3>
+      <button class="btn-rekap-close" onclick="tutupEditAbsen()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="rekap-detail-body">
+      <div style="background:var(--accent-light);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+        <div style="font-weight:700;color:var(--text)" id="ea-nama">—</div>
+        <div style="font-size:.78rem;color:var(--text-muted)" id="ea-tanggal">—</div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px">Jam Masuk</label>
+        <input type="time" id="ea-jam-masuk" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:.95rem">
+      </div>
+      <div style="margin-bottom:8px">
+        <label style="display:block;font-size:.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px">Jam Pulang</label>
+        <input type="time" id="ea-jam-pulang" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:.95rem">
+      </div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:16px;display:flex;gap:6px;align-items:flex-start">
+        <i class="fas fa-circle-info" style="margin-top:2px"></i>
+        <span>Kosongkan salah satu jam untuk menghapus absen tersebut. Perubahan ini tercatat sebagai koreksi oleh admin/manager, bukan absen asli karyawan.</span>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="tutupEditAbsen()" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:var(--card);font-weight:600;color:var(--text-muted)">Batal</button>
+        <button onclick="simpanEditAbsen()" style="flex:1;padding:11px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="modal-rekap-detail">
   <div class="rekap-detail-box">
     <div class="rekap-detail-header">
