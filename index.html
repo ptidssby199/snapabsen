@@ -554,9 +554,21 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
           <button id="btn-tutup-form-izin" onclick="toggleIzinForm()" style="display:none;padding:6px 10px;background:var(--red-light);border:1.5px solid var(--red);border-radius:8px;color:var(--red);font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif"><i class="fas fa-times"></i> Tutup</button>
         </div>
         <div class="izin-form" style="margin-bottom:20px">
-          <div class="form-group"><label>Jenis Ijin</label><select id="izin-jenis"><option value="">-- Pilih Jenis --</option><option>Sakit</option><option>Cuti Tahunan</option><option>Cuti Melahirkan</option><option>Keperluan Keluarga</option><option>Dinas Luar</option><option>Lainnya</option></select></div>
+          <div class="form-group"><label>Jenis Ijin</label><select id="izin-jenis" onchange="toggleSuratDokterField()"><option value="">-- Pilih Jenis --</option><option>Sakit</option><option>Cuti Tahunan</option><option>Cuti Melahirkan</option><option>Keperluan Keluarga</option><option>Dinas Luar</option><option>Lainnya</option></select></div>
           <div class="form-group"><label>Tanggal</label><div class="date-range"><input type="date" id="izin-dari"><input type="date" id="izin-sampai"></div></div>
           <div class="form-group"><label>Keterangan</label><textarea id="izin-ket" placeholder="Jelaskan keperluan..."></textarea></div>
+          <div class="form-group" id="izin-surat-dokter-wrap" style="display:none">
+            <label>Surat Dokter <small style="font-weight:400;color:var(--text-muted)">(opsional)</small></label>
+            <input type="file" id="izin-surat-input" accept="image/*" style="display:none" onchange="handleSuratDokterUpload(this)">
+            <div id="izin-surat-preview-empty" onclick="document.getElementById('izin-surat-input').click()" style="border:1.5px dashed var(--border);border-radius:10px;padding:18px;text-align:center;cursor:pointer;color:var(--text-muted)">
+              <i class="fas fa-camera" style="font-size:1.3rem;margin-bottom:6px;display:block"></i>
+              <span style="font-size:.82rem">Tap untuk ambil foto / pilih dari galeri</span>
+            </div>
+            <div id="izin-surat-preview-filled" style="display:none;position:relative">
+              <img id="izin-surat-preview-img" style="width:100%;max-height:200px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+              <button type="button" onclick="hapusSuratDokter()" style="position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none"><i class="fas fa-times"></i></button>
+            </div>
+          </div>
           <button class="btn-submit" onclick="submitIzin()"><i class="fas fa-paper-plane"></i> Ajukan Ijin</button>
         </div>
       </div>
@@ -2043,6 +2055,7 @@ function renderIzinHistory(data, isAdmin=false){
       +'<div class="il-type">'+i.jenis+'</div>'
       +'<div class="il-date"><i class="fas fa-calendar" style="font-size:.7rem;margin-right:4px"></i>'+tglDari+' — '+tglSampai+durasi+'</div>'
       +'<div class="il-reason">'+i.ket+'</div>'
+      +(i.suratDokter ? '<div style="margin-top:8px"><img src="'+i.suratDokter+'" onclick="lihatSuratDokter(this.src)" style="width:90px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer" title="Klik untuk lihat surat dokter"><div style="font-size:.7rem;color:var(--text-muted);margin-top:3px"><i class="fas fa-file-medical" style="margin-right:3px"></i>Surat Dokter</div></div>' : '')
       +approvedInfo
       +noteHtml
       +'</div>'
@@ -2052,6 +2065,55 @@ function renderIzinHistory(data, isAdmin=false){
       +'</div>';
   }).join('');
 }
+let suratDokterDataUrl=null;
+function toggleSuratDokterField(){
+  const jenis=document.getElementById('izin-jenis').value;
+  const wrap=document.getElementById('izin-surat-dokter-wrap');
+  wrap.style.display = jenis==='Sakit' ? 'block' : 'none';
+  if(jenis!=='Sakit') hapusSuratDokter();
+}
+function handleSuratDokterUpload(input){
+  const f=input.files[0];
+  if(!f) return;
+  if(!f.type.startsWith('image/')){showToast('File harus berupa foto/gambar','error');return;}
+  if(f.size>8*1024*1024){showToast('Ukuran foto terlalu besar (maks 8MB)','error');return;}
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      // Kompres & resize agar ukuran data tetap aman disimpan di Firestore (limit 1MB per dokumen)
+      const MAX_DIM=1280;
+      let w=img.width,h=img.height;
+      if(w>MAX_DIM||h>MAX_DIM){
+        if(w>h){h=Math.round(h*MAX_DIM/w);w=MAX_DIM;}
+        else{w=Math.round(w*MAX_DIM/h);h=MAX_DIM;}
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      suratDokterDataUrl=canvas.toDataURL('image/jpeg',0.7);
+      document.getElementById('izin-surat-preview-img').src=suratDokterDataUrl;
+      document.getElementById('izin-surat-preview-empty').style.display='none';
+      document.getElementById('izin-surat-preview-filled').style.display='block';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(f);
+}
+function hapusSuratDokter(){
+  suratDokterDataUrl=null;
+  document.getElementById('izin-surat-input').value='';
+  document.getElementById('izin-surat-preview-empty').style.display='block';
+  document.getElementById('izin-surat-preview-filled').style.display='none';
+}
+function lihatSuratDokter(src){
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:90vh;border-radius:8px"><button style="position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:1.1rem"><i class="fas fa-times"></i></button>';
+  overlay.onclick=()=>overlay.remove();
+  document.body.appendChild(overlay);
+}
+
 async function submitIzin(){
   const j=document.getElementById('izin-jenis').value,d=document.getElementById('izin-dari').value,s=document.getElementById('izin-sampai').value,k=document.getElementById('izin-ket').value.trim();
   if(!j){showToast('Pilih jenis ijin','error');return;}
@@ -2061,6 +2123,7 @@ async function submitIzin(){
   const btn=document.querySelector('#izin-form-wrap .btn-submit');
   if(btn){btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mengirim...';btn.disabled=true;}
   const rec={jenis:j,dari:d,sampai:s,ket:k,status:'pending',
+    suratDokter: suratDokterDataUrl || null,
     uid:currentUser?.uid,userName:currentUser?.name,
     userEmail:currentUser?.email,createdAt:new Date().toISOString()};
   try{
@@ -2068,6 +2131,8 @@ async function submitIzin(){
       await firebaseDb.collection('izin').add({...rec,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
     }
     ['izin-jenis','izin-dari','izin-sampai','izin-ket'].forEach(id=>document.getElementById(id).value='');
+    hapusSuratDokter();
+    document.getElementById('izin-surat-dokter-wrap').style.display='none';
     showToast('Pengajuan ijin berhasil dikirim!','success');
     // Jika manager, tutup form dan refresh semua
     if(hasRole('manager')){
