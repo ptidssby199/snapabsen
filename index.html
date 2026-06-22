@@ -506,6 +506,11 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div class="main-content">
     <!-- HOME -->
     <div class="tab-content active" id="tab-home">
+      <div id="pending-sync-banner" style="display:none;align-items:center;gap:10px;background:var(--yellow-light);color:#92400e;padding:12px 14px;border-radius:12px;margin-bottom:14px">
+        <i class="fas fa-cloud-arrow-up" style="font-size:1.1rem"></i>
+        <span class="psb-text" style="flex:1;font-size:.82rem;font-weight:600">0 absen belum tersinkron ke server</span>
+        <button id="btn-sync-pending" onclick="syncPendingAbsen()" style="padding:7px 12px;background:#92400e;color:#fff;border:none;border-radius:8px;font-size:.76rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap"><i class="fas fa-rotate"></i> Sync Sekarang</button>
+      </div>
       <div class="greeting-card">
         <div class="greeting">Selamat datang,</div>
         <div class="name" id="user-name">—</div>
@@ -704,6 +709,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <div class="menu-list">
         <button class="menu-item" onclick="openEditProfil()"><div class="mi-icon" style="background:var(--primary-light)"><i class="fas fa-user-edit" style="color:var(--primary)"></i></div><div><div class="mi-label">Edit Profil</div><div class="mi-desc">Ubah nama, foto, dan info pribadi</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
         <button class="menu-item" onclick="openGantiPassword()"><div class="mi-icon" style="background:#fce7f3"><i class="fas fa-lock" style="color:#db2777"></i></div><div><div class="mi-label">Ganti Password</div><div class="mi-desc">Perbarui kata sandi akun</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
+        <button class="menu-item" onclick="openSyncHistoryModal()"><div class="mi-icon" style="background:#fef9c3"><i class="fas fa-cloud-arrow-up" style="color:#ca8a04"></i></div><div><div class="mi-label">Riwayat Sync Absen</div><div class="mi-desc">Absen offline & status sinkronisasi</div></div><span class="pending-sync-badge" style="display:none;background:var(--red);color:#fff;border-radius:20px;padding:2px 8px;font-size:.72rem;font-weight:700;margin-right:6px">0</span><i class="fas fa-chevron-right mi-arrow"></i></button>
       </div>
       <div class="menu-section-title">Konfigurasi</div>
       <div class="menu-list">
@@ -1061,6 +1067,25 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   </div>
 </div>
 
+<!-- RIWAYAT SYNC ABSEN OFFLINE -->
+<div class="center-modal-overlay" id="modal-sync-history">
+  <div class="center-modal-box">
+    <div class="gp-header"><button class="gp-close" onclick="closeSyncHistoryModal()"><i class="fas fa-times"></i></button><h2><i class="fas fa-cloud-arrow-up"></i> Riwayat Sync Absen</h2><p>Absen yang tersimpan offline akan dikirim ke server saat Anda menekan Sync</p></div>
+    <div class="gp-body">
+      <div id="pending-sync-banner-modal" style="display:none;align-items:center;gap:10px;background:var(--yellow-light);color:#92400e;padding:12px 14px;border-radius:12px;margin-bottom:16px">
+        <i class="fas fa-triangle-exclamation"></i>
+        <span class="psb-modal-text" style="flex:1;font-size:.82rem;font-weight:600">0 absen menunggu sync</span>
+      </div>
+      <button id="btn-sync-pending-modal" onclick="syncPendingAbsen()" style="width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:.88rem;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:18px;font-family:'Plus Jakarta Sans',sans-serif"><i class="fas fa-rotate"></i> Sync Sekarang</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Riwayat Sync Terakhir</div>
+        <button onclick="clearSyncLog()" style="background:none;border:none;color:var(--text-muted);font-size:.72rem;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer"><i class="fas fa-trash" style="margin-right:3px"></i>Bersihkan</button>
+      </div>
+      <div id="sync-log-list" style="max-height:280px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
 <!-- RADIUS KANTOR -->
 <div class="center-modal-overlay" id="modal-radius">
   <div class="center-modal-box">
@@ -1272,6 +1297,7 @@ function finishLogin(isRestore=false){
   document.getElementById('session-check').classList.remove('show');
   applyRoleUI();updateProfileUI();
   loadMyAbsensiToday();loadMyAbsensiHistory();loadMyIzin();loadProfileStats();loadMyJadwalHariIni();
+  updatePendingBadge();
   document.getElementById('page-login').style.display='none';
   document.getElementById('page-app').style.display='block';
   if(!isRestore) showToast('Selamat datang, '+currentUser.name+'!','success');
@@ -1969,25 +1995,54 @@ async function submitAbsen(type){
   showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
   dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
-    await saveAbsenToFirebase({
+    // Foto untuk absen offline dikompres lebih agresif agar tidak membebani localStorage
+    let photoToSave = capturedPhoto;
+    if(capturedPhoto && !navigator.onLine){
+      photoToSave = await compressPhotoForOffline(capturedPhoto);
+    }
+    const result = await saveAbsenToFirebase({
       type, time:t, date:getLocalDateStr(now),
       lat:currentLocation?.lat, lng:currentLocation?.lng,
       accuracy:currentLocation?.acc,
       fakeGpsScore:currentLocation?.fakeScore||0,
       gpsWarnings:currentLocation?.warnings||[],
-      photoBase64: capturedPhoto || null,
+      photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
     closeAbsenModal();
-    showToast((type==='masuk'?'Absen masuk':'Absen pulang')+' berhasil! Pukul '+t,'success');
+    if(result && result.offline){
+      showToast((type==='masuk'?'Absen masuk':'Absen pulang')+' tersimpan di perangkat (offline). Sync nanti saat ada internet.','warning');
+      updatePendingBadge();
+    } else {
+      showToast((type==='masuk'?'Absen masuk':'Absen pulang')+' berhasil! Pukul '+t,'success');
+    }
     setTimeout(loadMyAbsensiToday,1500);
   }catch(err){
     console.error('[submitAbsen] Error:', err);
     showToast('Gagal menyimpan absensi: '+(err.message||err),'error');
     btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
   }
+}
+function compressPhotoForOffline(dataUrl){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX_DIM=480; // lebih kecil dari foto online biasa, cukup untuk verifikasi visual
+      let w=img.width,h=img.height;
+      if(w>MAX_DIM||h>MAX_DIM){
+        if(w>h){h=Math.round(h*MAX_DIM/w);w=MAX_DIM;}
+        else{w=Math.round(w*MAX_DIM/h);h=MAX_DIM;}
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg',0.45));
+    };
+    img.onerror=()=>resolve(dataUrl); // fallback: kalau gagal kompres, pakai foto asli
+    img.src=dataUrl;
+  });
 }
 
 // RIWAYAT
@@ -2628,6 +2683,17 @@ function closeGantiPassword(){
   document.getElementById('gp-strength-bar').style.width='0';document.getElementById('gp-strength-label').textContent='';document.getElementById('gp-match-msg').textContent='';
   ['rule-len','rule-upper','rule-num','rule-sym'].forEach(r=>document.getElementById(r).className='gp-rule');
 }
+function openSyncHistoryModal(){
+  const n=getPendingAbsen().length;
+  const banner=document.getElementById('pending-sync-banner-modal');
+  if(n>0){banner.style.display='flex';banner.querySelector('.psb-modal-text').textContent=n+' absen menunggu sync';}
+  else{banner.style.display='none';}
+  renderSyncLog();
+  document.getElementById('modal-sync-history').classList.add('open');
+}
+function closeSyncHistoryModal(){
+  document.getElementById('modal-sync-history').classList.remove('open');
+}
 function togglePass(id,btn){const i=document.getElementById(id),isP=i.type==='password';i.type=isP?'text':'password';btn.innerHTML=isP?'<i class="fas fa-eye-slash"></i>':'<i class="fas fa-eye"></i>';}
 function checkPasswordStrength(){
   const v=document.getElementById('gp-baru').value;
@@ -3013,23 +3079,125 @@ async function fbLogin(email,pass){
 async function fbSaveProfile(uid,data){if(!firebaseDb)return;try{await firebaseDb.collection('users').doc(uid).set(data,{merge:true});}catch(e){console.error(e);}}
 async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await firebaseDb.collection('users').doc(uid).get();return d.exists?d.data():null;}catch(e){return null;}}
 async function saveAbsenToFirebase(record){
-  // Simpan foto base64 langsung ke Firestore (Firebase Spark - tanpa Storage)
-  // Foto sudah dicompress ke ~20-30KB, aman untuk limit 1MB Firestore
+  // Jika browser terdeteksi offline, langsung simpan ke antrian tanpa mencoba Firestore dulu
+  if(!navigator.onLine){
+    queueAbsenPending(record);
+    return {offline:true};
+  }
   if(record.photoBase64){
     dbgLog('Foto '+Math.round(record.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
   }
-
   dbgLog('Firestore: menyimpan dokumen...');
   if(firebaseDb){
-    await firebaseDb.collection('absensi')
-      .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-    dbgLog('Firestore: TERSIMPAN!');
+    try{
+      await firebaseDb.collection('absensi')
+        .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      dbgLog('Firestore: TERSIMPAN!');
+      return {offline:false};
+    }catch(e){
+      // Gagal kirim meski navigator.onLine=true (misal sinyal lemah/timeout) -> simpan ke antrian juga
+      dbgLog('Firestore gagal, masuk antrian offline: '+e.message);
+      queueAbsenPending(record);
+      return {offline:true, reason:e.message};
+    }
   } else {
-    let local=JSON.parse(localStorage.getItem('absensi_data')||'[]');
-    local.unshift({...record, createdAt:new Date().toISOString()});
-    localStorage.setItem('absensi_data',JSON.stringify(local));
+    queueAbsenPending(record);
+    return {offline:true};
   }
 }
+
+// ==============================================
+// ANTRIAN ABSEN OFFLINE (SYNC MANUAL)
+// ==============================================
+const PENDING_KEY='absen_pending_sync';
+const SYNC_LOG_KEY='absen_sync_log';
+
+function queueAbsenPending(record){
+  const list=JSON.parse(localStorage.getItem(PENDING_KEY)||'[]');
+  list.push({...record, _queuedAt:new Date().toISOString(), _localId:'p'+Date.now()+Math.random().toString(36).slice(2,7)});
+  localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+  updatePendingBadge();
+}
+function getPendingAbsen(){
+  return JSON.parse(localStorage.getItem(PENDING_KEY)||'[]');
+}
+function updatePendingBadge(){
+  const n=getPendingAbsen().length;
+  document.querySelectorAll('.pending-sync-badge').forEach(el=>{
+    if(n>0){el.textContent=n;el.style.display='inline-flex';}
+    else{el.style.display='none';}
+  });
+  const banner=document.getElementById('pending-sync-banner');
+  if(banner){
+    if(n>0){
+      banner.style.display='flex';
+      banner.querySelector('.psb-text').textContent=n+' absen belum tersinkron ke server';
+    } else {
+      banner.style.display='none';
+    }
+  }
+}
+async function syncPendingAbsen(){
+  const list=getPendingAbsen();
+  if(!list.length){ showToast('Tidak ada absen yang menunggu sync','info'); return; }
+  if(!navigator.onLine){ showToast('Tidak ada koneksi internet, coba lagi nanti','warning'); return; }
+  if(!firebaseDb){ showToast('Firebase belum terhubung','danger'); return; }
+  const btn=document.getElementById('btn-sync-pending');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Mensinkronkan...';}
+  showToast('Mensinkronkan '+list.length+' absen tertunda...','info');
+
+  const stillPending=[];
+  let success=0, failed=0;
+  const logEntries=[];
+
+  for(const rec of list){
+    try{
+      const {_localId,_queuedAt,...cleanRec}=rec;
+      await firebaseDb.collection('absensi').add({...cleanRec, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      success++;
+      logEntries.push({localId:_localId, type:rec.type, date:rec.date, time:rec.time, userName:rec.userName, status:'success', syncedAt:new Date().toISOString()});
+    }catch(e){
+      failed++;
+      stillPending.push(rec); // gagal -> tetap simpan untuk dicoba lagi nanti
+      logEntries.push({localId:rec._localId, type:rec.type, date:rec.date, time:rec.time, userName:rec.userName, status:'failed', error:e.message, syncedAt:new Date().toISOString()});
+    }
+  }
+
+  localStorage.setItem(PENDING_KEY, JSON.stringify(stillPending));
+  const log=JSON.parse(localStorage.getItem(SYNC_LOG_KEY)||'[]');
+  localStorage.setItem(SYNC_LOG_KEY, JSON.stringify([...logEntries, ...log].slice(0,200))); // simpan maks 200 log terakhir
+
+  updatePendingBadge();
+  if(typeof renderSyncLog==='function') renderSyncLog();
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-rotate"></i> Sync Sekarang';}
+
+  if(failed===0) showToast('Berhasil! '+success+' absen tersinkron ke server','success');
+  else showToast(success+' berhasil, '+failed+' gagal (akan dicoba lagi nanti)','warning');
+
+  if(typeof loadMyAbsensiToday==='function') loadMyAbsensiToday();
+}
+function renderSyncLog(){
+  const c=document.getElementById('sync-log-list');
+  if(!c) return;
+  const log=JSON.parse(localStorage.getItem(SYNC_LOG_KEY)||'[]');
+  if(!log.length){ c.innerHTML='<div class="empty-state"><i class="fas fa-clock-rotate-left"></i><p>Belum ada riwayat sync</p></div>'; return; }
+  c.innerHTML=log.map(l=>{
+    const d=new Date(l.syncedAt); const jam=isNaN(d)?'—':String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    const ok=l.status==='success';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="width:32px;height:32px;border-radius:50%;background:'+(ok?'var(--green-light)':'var(--red-light)')+';display:flex;align-items:center;justify-content:center;color:'+(ok?'var(--green)':'var(--red)')+'"><i class="fas '+(ok?'fa-check':'fa-xmark')+'"></i></div>'
+      +'<div style="flex:1"><div style="font-weight:600;font-size:.85rem">'+(l.type==='masuk'?'Absen Masuk':'Absen Pulang')+' — '+(l.userName||'—')+'</div>'
+      +'<div style="font-size:.72rem;color:var(--text-muted)">'+(l.date||'')+' '+(l.time||'')+' · disync pukul '+jam+(ok?'':' · '+(l.error||'Gagal'))+'</div></div>'
+      +'</div>';
+  }).join('');
+}
+function clearSyncLog(){
+  localStorage.removeItem(SYNC_LOG_KEY);
+  renderSyncLog();
+  showToast('Riwayat sync dibersihkan','success');
+}
+window.addEventListener('online', ()=>{ updatePendingBadge(); showToast('Koneksi internet kembali tersedia','info'); });
+window.addEventListener('offline', ()=>{ updatePendingBadge(); });
 
 
 // ==============================================
@@ -4163,7 +4331,7 @@ function showToast(msg,type='info'){
 }
 
 // CLOSE ON OVERLAY
-['modal-absen','modal-gantipass','modal-radius','modal-editprofil','modal-firebase','modal-role','modal-user-form','modal-delete-confirm','modal-shift','modal-jadwal-day','modal-rekap-detail','modal-edit-absen'].forEach(id=>{
+['modal-absen','modal-gantipass','modal-radius','modal-editprofil','modal-firebase','modal-role','modal-user-form','modal-delete-confirm','modal-shift','modal-jadwal-day','modal-rekap-detail','modal-edit-absen','modal-sync-history'].forEach(id=>{
   const el=document.getElementById(id);
   el.addEventListener('click',function(e){
     if(e.target!==this)return;
@@ -4179,6 +4347,7 @@ function showToast(msg,type='info'){
     else if(id==='modal-jadwal-day')closeJadwalDayModal();
     else if(id==='modal-rekap-detail')tutupDetailModal();
     else if(id==='modal-edit-absen')tutupEditAbsen();
+    else if(id==='modal-sync-history')closeSyncHistoryModal();
   });
 });
 
