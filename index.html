@@ -1114,6 +1114,14 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <div class="rk-group"><label>Radius Zona Absen</label><div class="rk-radius-input-wrap"><input type="number" id="rk-radius" min="3" max="2000" step="1" value="20" class="rk-radius-number" oninput="updateRadiusSlider()" placeholder="20"><span class="rk-radius-unit">meter</span></div><div id="rk-radius-note" style="font-size:.75rem;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:4px"><i class="fas fa-lock" style="font-size:.65rem"></i> Min: 3 m — Max: 2000 m</div></div>
       <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" value="-7.285319" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" value="112.759543" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"></div></div>
       <!-- Koordinat dikunci ke Jalan Pucang Anom Timur III No. 12, Surabaya --><div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#1d4ed8;display:flex;align-items:center;gap:6px"><i class="fas fa-lock"></i> Koordinat dikunci: Jalan Pucang Anom Timur III No. 12, Surabaya</div>
+      <div class="rk-group" style="margin-top:14px">
+        <label>Kode Sync SQL Server <small style="font-weight:400;color:#64748b">(untuk kolom CheckInMachine &amp; AbsenceType saat sync)</small></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="rk-input" type="text" id="rk-checkin-machine" placeholder="SB1">
+          <input class="rk-input" type="text" id="rk-absence-type" placeholder="AT-SB1-0004">
+        </div>
+        <div style="font-size:.72rem;color:#64748b;margin-top:4px">Kiri: kode CheckInMachine. Kanan: kode AbsenceType.</div>
+      </div>
       <button class="btn-rk-save" onclick="saveRadius()"><i class="fas fa-save"></i> Simpan Konfigurasi</button>
       <button class="btn-rk-cancel" onclick="closeRadiusModal()">Batal</button>
     </div>
@@ -1193,6 +1201,11 @@ let jadwalUsers=[];
 
 // STATE
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
+// Kode identitas SnapAbsen sebagai "mesin absen" untuk sync ke SQL Server (T_EmployeeAbsen).
+// Saat ini hanya 1 lokasi kantor, jadi nilainya tetap. Jika nanti ada cabang baru,
+// ubah logic ini agar mengembalikan kode berbeda sesuai lokasi/radius yang dipakai.
+const CHECKIN_MACHINE_CODE='SB1';
+const ABSENCE_TYPE_CODE='AT-SB1-0004';
 let absenMap=null,absenMarker=null,absenCircle=null;
 let radiusMapObj=null,radiusMarker=null,radiusCircleObj=null;
 let officeConfig=null,firebaseConfig=null,firebaseDb=null,firebaseAuth=null,firebaseUser=null;
@@ -2007,7 +2020,9 @@ async function submitAbsen(type){
       fakeGpsScore:currentLocation?.fakeScore||0,
       gpsWarnings:currentLocation?.warnings||[],
       photoBase64: photoToSave || null,
-      uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole
+      uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
+      checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE,
+      absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
@@ -2446,6 +2461,7 @@ async function simpanEditAbsen(){
         await firebaseDb.collection('absensi').add({
           type:'masuk', time:jamMasuk, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
           lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
+          checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE, absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
           editedByAdmin:true, editedBy: currentUser?.name||'Admin',
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2464,6 +2480,7 @@ async function simpanEditAbsen(){
         await firebaseDb.collection('absensi').add({
           type:'pulang', time:jamPulang, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
           lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
+          checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE, absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
           editedByAdmin:true, editedBy: currentUser?.name||'Admin',
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2739,6 +2756,14 @@ function openRadiusModal(){
         if(rNote)rNote.innerHTML='<i class="fas fa-lock" style="font-size:.65rem"></i> Radius hanya dapat diubah oleh Admin';
       }
     }
+    const cim=document.getElementById('rk-checkin-machine'), abt=document.getElementById('rk-absence-type');
+    if(cim) cim.value = officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE;
+    if(abt) abt.value = officeConfig?.absenceType || ABSENCE_TYPE_CODE;
+    [cim,abt].forEach(el=>{
+      if(!el) return;
+      if(isAdmin){ el.readOnly=false; el.style.background=''; el.style.cursor=''; el.style.color=''; }
+      else { el.readOnly=true; el.style.background='#f1f5f9'; el.style.cursor='not-allowed'; el.style.color='#64748b'; }
+    });
   },250);(function(){const _m=document.getElementById('modal-radius');_m.style.display='';_m.classList.add('open');})();setTimeout(initRadiusMap,200);}
 function closeRadiusModal(){document.getElementById('modal-radius').classList.remove('open');}
 function initRadiusMap(){
@@ -2776,7 +2801,10 @@ function saveRadius(){
     document.getElementById('rk-radius').value=currentRadius;
     return;
   }
-  officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:finalRadius,nama,address:FIXED_ADDR};
+  officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:finalRadius,nama,address:FIXED_ADDR,
+    checkInMachine: document.getElementById('rk-checkin-machine')?.value.trim() || officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE,
+    absenceType: document.getElementById('rk-absence-type')?.value.trim() || officeConfig?.absenceType || ABSENCE_TYPE_CODE
+  };
   localStorage.setItem('office_config',JSON.stringify(officeConfig));
   if(firebaseDb)firebaseDb.collection('settings').doc('office').set(officeConfig).catch(()=>{});
   updateRadiusDesc();closeRadiusModal();showToast('Radius kantor tersimpan! ('+radius+' m)','success');
