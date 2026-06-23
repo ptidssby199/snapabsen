@@ -1115,12 +1115,19 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       <div class="rk-group"><label>Koordinat Kantor</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="rk-input" type="text" id="rk-lat" placeholder="Latitude" value="-7.285319" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"><input class="rk-input" type="text" id="rk-lng" placeholder="Longitude" value="112.759543" readonly style="background:#f1f5f9;color:#64748b;cursor:not-allowed"></div></div>
       <!-- Koordinat dikunci ke Jalan Pucang Anom Timur III No. 12, Surabaya --><div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:8px 12px;font-size:.78rem;color:#1d4ed8;display:flex;align-items:center;gap:6px"><i class="fas fa-lock"></i> Koordinat dikunci: Jalan Pucang Anom Timur III No. 12, Surabaya</div>
       <div class="rk-group" style="margin-top:14px">
-        <label>Kode Sync SQL Server <small style="font-weight:400;color:#64748b">(untuk kolom CheckInMachine &amp; AbsenceType saat sync)</small></label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label>Kode Sync SQL Server <small style="font-weight:400;color:#64748b">(untuk kolom CheckInMachine, CheckOutMachine &amp; AbsenceType saat sync)</small></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
           <input class="rk-input" type="text" id="rk-checkin-machine" placeholder="SB1">
-          <input class="rk-input" type="text" id="rk-absence-type" placeholder="AT-SB1-0004">
+          <input class="rk-input" type="text" id="rk-checkout-machine" placeholder="SB1">
         </div>
-        <div style="font-size:.72rem;color:#64748b;margin-top:4px">Kiri: kode CheckInMachine. Kanan: kode AbsenceType.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="font-size:.72rem;color:#64748b">CheckInMachine (absen masuk)</div>
+          <div style="font-size:.72rem;color:#64748b">CheckOutMachine (absen pulang)</div>
+        </div>
+        <div style="margin-top:8px">
+          <input class="rk-input" type="text" id="rk-absence-type" placeholder="AT-SB1-0004">
+          <div style="font-size:.72rem;color:#64748b;margin-top:4px">AbsenceType</div>
+        </div>
       </div>
       <button class="btn-rk-save" onclick="saveRadius()"><i class="fas fa-save"></i> Simpan Konfigurasi</button>
       <button class="btn-rk-cancel" onclick="closeRadiusModal()">Batal</button>
@@ -1205,6 +1212,7 @@ let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,l
 // Saat ini hanya 1 lokasi kantor, jadi nilainya tetap. Jika nanti ada cabang baru,
 // ubah logic ini agar mengembalikan kode berbeda sesuai lokasi/radius yang dipakai.
 const CHECKIN_MACHINE_CODE='SB1';
+const CHECKOUT_MACHINE_CODE='SB1';
 const ABSENCE_TYPE_CODE='AT-SB1-0004';
 let absenMap=null,absenMarker=null,absenCircle=null;
 let radiusMapObj=null,radiusMarker=null,radiusCircleObj=null;
@@ -2021,7 +2029,8 @@ async function submitAbsen(type){
       gpsWarnings:currentLocation?.warnings||[],
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
-      checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE,
+      checkInMachine: type==='masuk' ? (officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE) : (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE),
+      checkOutMachine: type==='pulang' ? (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE) : undefined,
       absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
@@ -2461,7 +2470,8 @@ async function simpanEditAbsen(){
         await firebaseDb.collection('absensi').add({
           type:'masuk', time:jamMasuk, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
           lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
-          checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE, absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
+          checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE,
+          absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
           editedByAdmin:true, editedBy: currentUser?.name||'Admin',
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2480,7 +2490,8 @@ async function simpanEditAbsen(){
         await firebaseDb.collection('absensi').add({
           type:'pulang', time:jamPulang, date, uid, userName:editAbsenCtx.name, userRole:'karyawan',
           lat:null, lng:null, accuracy:null, fakeGpsScore:0, gpsWarnings:[], photoBase64:null,
-          checkInMachine: officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE, absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
+          checkOutMachine: officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE,
+          absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE,
           editedByAdmin:true, editedBy: currentUser?.name||'Admin',
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -2758,6 +2769,8 @@ function openRadiusModal(){
     }
     const cim=document.getElementById('rk-checkin-machine'), abt=document.getElementById('rk-absence-type');
     if(cim) cim.value = officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE;
+    const com=document.getElementById('rk-checkout-machine');
+    if(com) com.value = officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE;
     if(abt) abt.value = officeConfig?.absenceType || ABSENCE_TYPE_CODE;
     [cim,abt].forEach(el=>{
       if(!el) return;
@@ -2803,6 +2816,7 @@ function saveRadius(){
   }
   officeConfig={lat:FIXED_LAT,lng:FIXED_LNG,radius:finalRadius,nama,address:FIXED_ADDR,
     checkInMachine: document.getElementById('rk-checkin-machine')?.value.trim() || officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE,
+    checkOutMachine: document.getElementById('rk-checkout-machine')?.value.trim() || officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE,
     absenceType: document.getElementById('rk-absence-type')?.value.trim() || officeConfig?.absenceType || ABSENCE_TYPE_CODE
   };
   localStorage.setItem('office_config',JSON.stringify(officeConfig));
