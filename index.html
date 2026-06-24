@@ -1980,8 +1980,8 @@ async function loadCabangListAbsen(){
     const now = Date.now();
     if(!_cabangCache || now-_cabangCacheTime > 60000){
       if(!firebaseDb) throw new Error('Firebase belum terhubung');
-      const snap = await firebaseDb.collection('cabang').where('status','==','aktif').orderBy('nama','asc').get();
-      _cabangCache = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const snap = await firebaseDb.collection('cabang').where('status','==','aktif').get();
+      _cabangCache = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nama||'').localeCompare(b.nama||'','id'));
       _cabangCacheTime = now;
     }
     const list = _cabangCache;
