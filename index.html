@@ -1243,8 +1243,15 @@ const ROLE_LEVEL={karyawan:1,manager:2,admin:3};
 function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];}
 
 // INIT
+function hideLoader(){
+  const ld=document.getElementById('loader');
+  if(!ld||ld.style.display==='none')return;
+  ld.style.opacity='0';
+  setTimeout(()=>{ld.style.display='none';},500);
+}
 window.addEventListener('load',()=>{
-  setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
+  // Sembunyikan loader setelah animasi selesai (maks 2.5 detik dari load)
+  setTimeout(hideLoader, 2500);
   const fc=localStorage.getItem('firebase_config');
   const FIXED_OFFICE={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
   const oc=localStorage.getItem('office_config');
@@ -1279,6 +1286,11 @@ window.addEventListener('load',()=>{
         document.getElementById('page-login').style.display='flex';
       }
     }, 6000);
+  }
+  // Jika Firebase config tidak ada, tampilkan halaman login dan sembunyikan loader
+  if(!fc){
+    document.getElementById('page-login').style.display='flex';
+    setTimeout(hideLoader, 1800);
   }
 });
 function startClock(){
@@ -2145,7 +2157,7 @@ async function submitAbsen(type){
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
       checkInMachine: type==='masuk' ? ((selectedCabangData||officeConfig)?.checkInMachine || CHECKIN_MACHINE_CODE) : ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE) : null,
+      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE || null) : null,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
       cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
@@ -3206,6 +3218,7 @@ function loadFirebaseSDK(cfg){
             avatar:prof?.avatar||null
           };
           document.getElementById('loader').style.opacity='0';
+          document.getElementById('loader').style.opacity='0';
           document.getElementById('loader').style.display='none';
           finishLogin(true);
         } else if(!user){
@@ -3238,29 +3251,33 @@ async function fbLogin(email,pass){
 async function fbSaveProfile(uid,data){if(!firebaseDb)return;try{await firebaseDb.collection('users').doc(uid).set(data,{merge:true});}catch(e){console.error(e);}}
 async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await firebaseDb.collection('users').doc(uid).get();return d.exists?d.data():null;}catch(e){return null;}}
 async function saveAbsenToFirebase(record){
+  // Hapus semua field yang nilainya undefined — Firestore menolak nilai undefined
+  const sanitized = Object.fromEntries(
+    Object.entries(record).filter(([_, v]) => v !== undefined)
+  );
   // Jika browser terdeteksi offline, langsung simpan ke antrian tanpa mencoba Firestore dulu
   if(!navigator.onLine){
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
-  if(record.photoBase64){
-    dbgLog('Foto '+Math.round(record.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
+  if(sanitized.photoBase64){
+    dbgLog('Foto '+Math.round(sanitized.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
   }
   dbgLog('Firestore: menyimpan dokumen...');
   if(firebaseDb){
     try{
       await firebaseDb.collection('absensi')
-        .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        .add({...sanitized, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       dbgLog('Firestore: TERSIMPAN!');
       return {offline:false};
     }catch(e){
       // Gagal kirim meski navigator.onLine=true (misal sinyal lemah/timeout) -> simpan ke antrian juga
       dbgLog('Firestore gagal, masuk antrian offline: '+e.message);
-      queueAbsenPending(record);
+      queueAbsenPending(sanitized);
       return {offline:true, reason:e.message};
     }
   } else {
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
 }
@@ -4133,7 +4150,7 @@ async function salinJadwal(uid) {
     const day = date.split('-')[2];
     const newDate = tahun + '-' + String(targetBulan).padStart(2,'0') + '-' + day;
     const ref = firebaseDb.collection('jadwal').doc();
-    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId:, updatedAt: new Date().toISOString()}));
+    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: ref.id, updatedAt: new Date().toISOString()}));
   });
   try {
     await batch.commit();
