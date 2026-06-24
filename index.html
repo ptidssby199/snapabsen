@@ -2145,7 +2145,7 @@ async function submitAbsen(type){
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
       checkInMachine: type==='masuk' ? ((selectedCabangData||officeConfig)?.checkInMachine || CHECKIN_MACHINE_CODE) : ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE) : undefined,
+      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE) : null,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
       cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
