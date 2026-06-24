@@ -2123,15 +2123,72 @@ function dbgLog(msg){
   box.appendChild(line);
   box.scrollTop=box.scrollHeight;
 }
-async function submitAbsen(type){
-  const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  // Disable semua tombol absen agar tidak double-submit
-  const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
-  btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
-  showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
-  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
+
+// ============================================================
+// VALIDASI WAKTU SERVER vs WAKTU HP
+// ============================================================
+async function getServerTime(){
+  // Tulis dummy doc ke Firestore, baca serverTimestamp-nya, lalu hapus
   try{
-    // Foto untuk absen offline dikompres lebih agresif agar tidak membebani localStorage
+    const ref = await firebaseDb.collection('_timecheck').add({
+      t: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const snap = await ref.get();
+    await ref.delete();
+    const serverTs = snap.data()?.t?.toDate();
+    if(!serverTs) throw new Error('Tidak dapat membaca server time');
+    return serverTs;
+  }catch(e){
+    throw new Error('Gagal verifikasi waktu server: '+e.message);
+  }
+}
+
+async function validateDeviceTime(){
+  const MAX_DIFF_MS = 2 * 60 * 1000;
+  const deviceTime = new Date();
+  const serverTime = await getServerTime();
+  const diffMs = Math.abs(deviceTime - serverTime);
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffSec = Math.floor((diffMs % 60000) / 1000);
+  if(diffMs > MAX_DIFF_MS){
+    const selisih = diffMin > 0 ? diffMin+' menit '+diffSec+' detik' : diffSec+' detik';
+    const arah = deviceTime > serverTime ? 'lebih cepat' : 'lebih lambat';
+    const nl = String.fromCharCode(10);
+    throw new Error(
+      'Waktu perangkat Anda tidak akurat!' + nl + nl +
+      'Waktu HP: ' + deviceTime.toLocaleTimeString('id-ID') + nl +
+      'Waktu Server: ' + serverTime.toLocaleTimeString('id-ID') + nl +
+      'Selisih: ' + selisih + ' (' + arah + ')' + nl + nl +
+      'Aktifkan Tanggal & Waktu Otomatis di Pengaturan HP, lalu coba lagi.'
+    );
+  }
+  return serverTime;
+}
+
+async function submitAbsen(type){
+  const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
+  btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...'; });
+
+  // 1. Validasi waktu server
+  let serverTime;
+  try{
+    showToast('Memverifikasi waktu server...','info');
+    serverTime = await validateDeviceTime();
+  }catch(timeErr){
+    btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
+    const msg = 'Absensi Ditolak' + String.fromCharCode(10) + String.fromCharCode(10) + timeErr.message;
+    alert(msg);
+    return;
+  }
+
+  // 2. Proses absen dengan waktu dari server
+  const now = serverTime;
+  const t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  btns.forEach(b=>{ b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
+  showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
+  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto')+' | server: '+t);
+
+  try{
     let photoToSave = capturedPhoto;
     if(capturedPhoto && !navigator.onLine){
       photoToSave = await compressPhotoForOffline(capturedPhoto);
@@ -2148,7 +2205,9 @@ async function submitAbsen(type){
       checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE) : undefined,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
-      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
+      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat'),
+      timeValidated: true,
+      serverTimeUsed: now.toISOString()
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
