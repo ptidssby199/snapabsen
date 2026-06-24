@@ -2030,7 +2030,7 @@ async function submitAbsen(type){
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
       checkInMachine: type==='masuk' ? (officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE) : (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      checkOutMachine: type==='pulang' ? (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE) : undefined,
+      checkOutMachine: type==='pulang' ? (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE) : null,
       absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
@@ -4016,7 +4016,9 @@ async function salinJadwal(uid) {
     const day = date.split('-')[2];
     const newDate = tahun + '-' + String(targetBulan).padStart(2,'0') + '-' + day;
     const ref = firebaseDb.collection('jadwal').doc();
-    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: undefined, updatedAt: new Date().toISOString()}));
+    const jClean = Object.assign({}, j);
+    delete jClean.docId;
+    batch.set(ref, Object.assign(jClean, {date: newDate, bulanKey: targetKey, uid: uid, updatedAt: new Date().toISOString()}));
   });
   try {
     await batch.commit();
