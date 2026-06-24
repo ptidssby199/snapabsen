@@ -33,7 +33,7 @@
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
 #loader{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#1a56db,#1e40af);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s;}
 #loader .logo-big{font-family:'Syne',sans-serif;font-size:2.4rem;font-weight:800;color:#fff;letter-spacing:-1px;}
-#loader .logo-big span{color:#f97316;}
+#loader .logo-big span{color:#94071a;}
 #loader p{color:rgba(255,255,255,.7);margin-top:8px;font-size:.9rem;}
 .loader-bar{width:160px;height:4px;background:rgba(255,255,255,.2);border-radius:99px;margin-top:32px;overflow:hidden;}
 .loader-bar-fill{height:100%;background:#fff;border-radius:99px;animation:loadbar 1.8s ease forwards;}
@@ -43,19 +43,19 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .login-card{background:rgba(255,255,255,.06);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.15);border-radius:24px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 32px 80px rgba(0,0,0,.4);}
 .login-logo{text-align:center;margin-bottom:32px;}
 .login-logo .brand{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#fff;letter-spacing:-1px;}
-.login-logo .brand span{color:#f97316;}
+.login-logo .brand span{color:#94071a;}
 .login-logo p{color:rgba(255,255,255,.6);font-size:.85rem;margin-top:4px;}
 .login-card label{display:block;color:rgba(255,255,255,.8);font-size:.82rem;font-weight:600;margin-bottom:6px;}
 .login-card input{width:100%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:var(--radius-sm);padding:13px 16px;color:#fff;font-size:.95rem;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:16px;outline:none;transition:border .2s,background .2s;}
 .login-card input::placeholder{color:rgba(255,255,255,.35);}
 .login-card input:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.15);}
-.btn-login{width:100%;padding:14px;background:#f97316;border:none;border-radius:var(--radius-sm);color:#fff;font-size:1rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(249,115,22,.4);}
+.btn-login{width:100%;padding:14px;background:#94071a;border:none;border-radius:var(--radius-sm);color:#fff;font-size:1rem;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(249,115,22,.4);}
 .btn-login:disabled{background:#94a3b8;cursor:not-allowed;}
 .login-firebase-note{background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);border-radius:var(--radius-sm);padding:12px 14px;margin-top:16px;color:rgba(255,255,255,.8);font-size:.78rem;display:flex;gap:8px;align-items:flex-start;}
 .login-firebase-note i{color:#f97316;flex-shrink:0;margin-top:1px;}
 .topbar{background:var(--primary);color:#fff;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(26,86,219,.2);}
 .topbar .brand{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:-.5px;}
-.topbar .brand span{color:#f97316;}
+.topbar .brand span{color:#94071a;}
 .topbar-right{display:flex;gap:8px;align-items:center;}
 .topbar-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;}
 .role-pill{border-radius:99px;padding:3px 10px;font-size:.7rem;font-weight:700;letter-spacing:.3px;}
@@ -487,7 +487,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 <div id="session-check"><div class="brand">Snap<span>Absen</span></div><p><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Memverifikasi sesi...</p></div>
 <div id="page-login">
   <div class="login-card">
-    <div class="login-logo"><div class="brand">Snap<span>Absen</span></div><p>Sistem Absensi Karyawan</p></div>
+    <div class="login-logo"><div class="brand">Snap<span>Absen</span></div><p>Sistem Absensi Karyawan PT.IDS</p></div>
     <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
     <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
     <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
@@ -497,7 +497,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 <div id="page-app">
   <div class="topbar">
-    <div class="brand">Snap<span>Absen</span></div>
+    <div class="brand">Snap<span>Absen IDS</span></div>
     <div class="topbar-right">
       <span class="role-pill karyawan" id="topbar-role-pill">KARYAWAN</span>
       <button class="topbar-btn" onclick="openFirebaseModal()"><i class="fas fa-fire" style="color:#f97316"></i></button>
@@ -1243,8 +1243,15 @@ const ROLE_LEVEL={karyawan:1,manager:2,admin:3};
 function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];}
 
 // INIT
+function hideLoader(){
+  const ld=document.getElementById('loader');
+  if(!ld||ld.style.display==='none')return;
+  ld.style.opacity='0';
+  setTimeout(()=>{ld.style.display='none';},500);
+}
 window.addEventListener('load',()=>{
-  setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
+  // Sembunyikan loader setelah animasi selesai (maks 2.5 detik dari load)
+  setTimeout(hideLoader, 2500);
   const fc=localStorage.getItem('firebase_config');
   const FIXED_OFFICE={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
   const oc=localStorage.getItem('office_config');
@@ -1279,6 +1286,11 @@ window.addEventListener('load',()=>{
         document.getElementById('page-login').style.display='flex';
       }
     }, 6000);
+  }
+  // Jika Firebase config tidak ada, tampilkan halaman login dan sembunyikan loader
+  if(!fc){
+    document.getElementById('page-login').style.display='flex';
+    setTimeout(hideLoader, 1800);
   }
 });
 function startClock(){
@@ -2123,72 +2135,15 @@ function dbgLog(msg){
   box.appendChild(line);
   box.scrollTop=box.scrollHeight;
 }
-
-// ============================================================
-// VALIDASI WAKTU SERVER vs WAKTU HP
-// ============================================================
-async function getServerTime(){
-  // Tulis dummy doc ke Firestore, baca serverTimestamp-nya, lalu hapus
-  try{
-    const ref = await firebaseDb.collection('_timecheck').add({
-      t: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    const snap = await ref.get();
-    await ref.delete();
-    const serverTs = snap.data()?.t?.toDate();
-    if(!serverTs) throw new Error('Tidak dapat membaca server time');
-    return serverTs;
-  }catch(e){
-    throw new Error('Gagal verifikasi waktu server: '+e.message);
-  }
-}
-
-async function validateDeviceTime(){
-  const MAX_DIFF_MS = 2 * 60 * 1000;
-  const deviceTime = new Date();
-  const serverTime = await getServerTime();
-  const diffMs = Math.abs(deviceTime - serverTime);
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffSec = Math.floor((diffMs % 60000) / 1000);
-  if(diffMs > MAX_DIFF_MS){
-    const selisih = diffMin > 0 ? diffMin+' menit '+diffSec+' detik' : diffSec+' detik';
-    const arah = deviceTime > serverTime ? 'lebih cepat' : 'lebih lambat';
-    const nl = String.fromCharCode(10);
-    throw new Error(
-      'Waktu perangkat Anda tidak akurat!' + nl + nl +
-      'Waktu HP: ' + deviceTime.toLocaleTimeString('id-ID') + nl +
-      'Waktu Server: ' + serverTime.toLocaleTimeString('id-ID') + nl +
-      'Selisih: ' + selisih + ' (' + arah + ')' + nl + nl +
-      'Aktifkan Tanggal & Waktu Otomatis di Pengaturan HP, lalu coba lagi.'
-    );
-  }
-  return serverTime;
-}
-
 async function submitAbsen(type){
+  const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  // Disable semua tombol absen agar tidak double-submit
   const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
-  btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...'; });
-
-  // 1. Validasi waktu server
-  let serverTime;
-  try{
-    showToast('Memverifikasi waktu server...','info');
-    serverTime = await validateDeviceTime();
-  }catch(timeErr){
-    btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
-    const msg = 'Absensi Ditolak' + String.fromCharCode(10) + String.fromCharCode(10) + timeErr.message;
-    alert(msg);
-    return;
-  }
-
-  // 2. Proses absen dengan waktu dari server
-  const now = serverTime;
-  const t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  btns.forEach(b=>{ b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
+  btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
   showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
-  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto')+' | server: '+t);
-
+  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
+    // Foto untuk absen offline dikompres lebih agresif agar tidak membebani localStorage
     let photoToSave = capturedPhoto;
     if(capturedPhoto && !navigator.onLine){
       photoToSave = await compressPhotoForOffline(capturedPhoto);
@@ -2202,12 +2157,10 @@ async function submitAbsen(type){
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
       checkInMachine: type==='masuk' ? ((selectedCabangData||officeConfig)?.checkInMachine || CHECKIN_MACHINE_CODE) : ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      ...(type==='pulang' ? {checkOutMachine:(selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE} : {}),
+      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE || null) : null,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
-      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat'),
-      timeValidated: true,
-      serverTimeUsed: now.toISOString()
+      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
@@ -3265,6 +3218,7 @@ function loadFirebaseSDK(cfg){
             avatar:prof?.avatar||null
           };
           document.getElementById('loader').style.opacity='0';
+          document.getElementById('loader').style.opacity='0';
           document.getElementById('loader').style.display='none';
           finishLogin(true);
         } else if(!user){
@@ -3297,29 +3251,33 @@ async function fbLogin(email,pass){
 async function fbSaveProfile(uid,data){if(!firebaseDb)return;try{await firebaseDb.collection('users').doc(uid).set(data,{merge:true});}catch(e){console.error(e);}}
 async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await firebaseDb.collection('users').doc(uid).get();return d.exists?d.data():null;}catch(e){return null;}}
 async function saveAbsenToFirebase(record){
+  // Hapus semua field yang nilainya undefined — Firestore menolak nilai undefined
+  const sanitized = Object.fromEntries(
+    Object.entries(record).filter(([_, v]) => v !== undefined)
+  );
   // Jika browser terdeteksi offline, langsung simpan ke antrian tanpa mencoba Firestore dulu
   if(!navigator.onLine){
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
-  if(record.photoBase64){
-    dbgLog('Foto '+Math.round(record.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
+  if(sanitized.photoBase64){
+    dbgLog('Foto '+Math.round(sanitized.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
   }
   dbgLog('Firestore: menyimpan dokumen...');
   if(firebaseDb){
     try{
       await firebaseDb.collection('absensi')
-        .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        .add({...sanitized, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       dbgLog('Firestore: TERSIMPAN!');
       return {offline:false};
     }catch(e){
       // Gagal kirim meski navigator.onLine=true (misal sinyal lemah/timeout) -> simpan ke antrian juga
       dbgLog('Firestore gagal, masuk antrian offline: '+e.message);
-      queueAbsenPending(record);
+      queueAbsenPending(sanitized);
       return {offline:true, reason:e.message};
     }
   } else {
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
 }
@@ -4192,7 +4150,7 @@ async function salinJadwal(uid) {
     const day = date.split('-')[2];
     const newDate = tahun + '-' + String(targetBulan).padStart(2,'0') + '-' + day;
     const ref = firebaseDb.collection('jadwal').doc();
-    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: undefined, updatedAt: new Date().toISOString()}));
+    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: ref.id, updatedAt: new Date().toISOString()}));
   });
   try {
     await batch.commit();
