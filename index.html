@@ -974,32 +974,13 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="absen-steps">
-      <div class="absen-step active" id="step-ind-0"><div class="step-num">1</div><div class="step-label">Cabang</div></div>
-      <div class="step-line" id="step-line-0"></div>
-      <div class="absen-step" id="step-ind-1"><div class="step-num">2</div><div class="step-label">Lokasi</div></div>
+      <div class="absen-step active" id="step-ind-1"><div class="step-num">1</div><div class="step-label">Lokasi</div></div>
       <div class="step-line" id="step-line-1"></div>
-      <div class="absen-step" id="step-ind-2"><div class="step-num">3</div><div class="step-label">Pilih Absen</div></div>
+      <div class="absen-step" id="step-ind-2"><div class="step-num">2</div><div class="step-label">Pilih Absen</div></div>
       <div class="step-line" id="step-line-2"></div>
-      <div class="absen-step" id="step-ind-3"><div class="step-num">4</div><div class="step-label">Verifikasi</div></div>
+      <div class="absen-step" id="step-ind-3"><div class="step-num">3</div><div class="step-label">Verifikasi</div></div>
     </div>
-    <!-- STEP 0: PILIH CABANG -->
-    <div class="absen-step-content active" id="step-0">
-      <div class="absen-step-title"><i class="fas fa-building"></i> Pilih Kantor / Cabang</div>
-      <p style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px">Pilih lokasi kantor tempat Anda akan absen hari ini.</p>
-      <div id="cabang-list-absen" style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-        <div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat daftar cabang...</div>
-      </div>
-      <div id="cabang-selected-info" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="font-weight:700;color:#15803d;font-size:.9rem" id="cabang-selected-nama">—</div>
-        <div style="font-size:.78rem;color:#166534;margin-top:3px" id="cabang-selected-alamat">—</div>
-      </div>
-      <div style="padding:0 0 16px">
-        <button class="btn-next-step" id="btn-step0-next" onclick="goToStep(1)" disabled><i class="fas fa-arrow-right"></i> Lanjut ke Verifikasi Lokasi</button>
-        <button class="btn-cancel-modal" onclick="closeAbsenModal()">Batal</button>
-      </div>
-    </div>
-
-    <div class="absen-step-content" id="step-1">
+    <div class="absen-step-content active" id="step-1">
       <div class="absen-step-title"><i class="fas fa-map-marker-alt"></i> Verifikasi Lokasi</div>
       <div id="absen-map"></div>
       <div class="map-info-row loading" id="map-status-row"><i class="fas fa-spinner fa-spin"></i><div><div style="font-weight:700">Mengambil lokasi GPS...</div></div></div>
@@ -1236,7 +1217,6 @@ const ABSENCE_TYPE_CODE='AT-SB1-0004';
 let absenMap=null,absenMarker=null,absenCircle=null;
 let radiusMapObj=null,radiusMarker=null,radiusCircleObj=null;
 let officeConfig=null,firebaseConfig=null,firebaseDb=null,firebaseAuth=null,firebaseUser=null;
-let selectedCabangData=null; // cabang yang dipilih saat modal absen dibuka
 var firebaseStorage=null;
 let avatarDataUrl=null,historyData=[],laporanData=[];
 const ROLE_LEVEL={karyawan:1,manager:2,admin:3};
@@ -1530,10 +1510,7 @@ function openAbsenModal(){
   const el=document.getElementById('modal-absen');
   el.style.display='';
   el.classList.add('open');
-  selectedCabangData=null;
-  document.getElementById('btn-step0-next').disabled=true;
-  document.getElementById('cabang-selected-info').style.display='none';
-  goToStep(0);
+  goToStep(1);initAbsenMap();
 }
 let selectedAbsenType=null;
 let verifMethod=null;
@@ -1543,22 +1520,13 @@ function closeAbsenModal(){
   document.getElementById('modal-absen').classList.remove('open');
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;selectedAbsenType=null;verifMethod=null;verifDone=false;
-  selectedCabangData=null;
 }
 function goToStep(n){
   document.querySelectorAll('.absen-step-content').forEach(s=>s.classList.remove('active'));
   document.getElementById('step-'+n).classList.add('active');
-  [0,1,2,3].forEach(i=>{
-    const el=document.getElementById('step-ind-'+i);
-    if(!el) return;
-    el.classList.remove('active','done');
-    if(i<n) el.classList.add('done');
-    else if(i===n) el.classList.add('active');
-  });
-  [0,1,2].forEach(i=>{ const el=document.getElementById('step-line-'+i); if(el) el.classList.toggle('done',i<n); });
-  if(n===0){ loadCabangListAbsen(); }
-  if(n===1){ applySelectedCabang(); initAbsenMap(); }
-  if(n===3){ buildConfirmSummary(); resetVerifState(); }
+  [1,2,3].forEach(i=>{const el=document.getElementById('step-ind-'+i);el.classList.remove('active','done');if(i<n)el.classList.add('done');else if(i===n)el.classList.add('active');});
+  [1,2].forEach(i=>document.getElementById('step-line-'+i).classList.toggle('done',i<n));
+  if(n===3){buildConfirmSummary();resetVerifState();}
 }
 
 function pilihJenisAbsen(type){
@@ -1890,24 +1858,24 @@ function analyzeLocation(samples){
     showLocationWarning(warnings);
   }
 
-  // Gunakan cabang yang dipilih karyawan, atau fallback ke officeConfig global
-  const activeConfig = selectedCabangData || officeConfig;
-  if(activeConfig){
+  if(officeConfig){
     if(absenCircle)absenCircle.remove();
-    absenCircle=L.circle([activeConfig.lat,activeConfig.lng],{radius:activeConfig.radius||20,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2,dashArray:'6'}).addTo(absenMap);
-    L.circleMarker([activeConfig.lat,activeConfig.lng],{radius:8,color:'#0891b2',fillColor:'#0891b2',fillOpacity:1}).addTo(absenMap);
-    const dist=getDistance(lat,lng,activeConfig.lat,activeConfig.lng);
-    locationOk=dist<=(activeConfig.radius||20);
+    absenCircle=L.circle([officeConfig.lat,officeConfig.lng],{radius:officeConfig.radius,color:'#0891b2',fillColor:'#e0f2fe',fillOpacity:.3,weight:2,dashArray:'6'}).addTo(absenMap);
+    L.circleMarker([officeConfig.lat,officeConfig.lng],{radius:8,color:'#0891b2',fillColor:'#0891b2',fillOpacity:1}).addTo(absenMap);
+    const dist=getDistance(lat,lng,officeConfig.lat,officeConfig.lng);
+    locationOk=dist<=officeConfig.radius;
     if(locationOk) setMapStatus('dalam','✓ Dalam zona absensi'+(fakeScore>=2?' ⚠️':''),'Jarak ke kantor: '+Math.round(dist)+' m');
-    else setMapStatus('luar','✗ Di luar zona absensi','Jarak: '+Math.round(dist)+' m (radius: '+(activeConfig.radius||20)+' m)');
-    document.getElementById('map-radius-note').textContent='Zona: '+(activeConfig.nama||'Kantor')+' — Radius '+(activeConfig.radius||20)+' m';
+    else setMapStatus('luar','✗ Di luar zona absensi','Jarak: '+Math.round(dist)+' m (radius: '+officeConfig.radius+' m)');
+    document.getElementById('map-radius-note').textContent='Zona: '+(officeConfig.nama||'Kantor')+' — Radius '+officeConfig.radius+' m';
   } else {
-    const fallback={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat'};
-    const dist=getDistance(lat,lng,fallback.lat,fallback.lng);
-    locationOk=dist<=fallback.radius;
-    if(locationOk) setMapStatus('dalam','✓ Dalam zona absensi','Jarak ke kantor: '+Math.round(dist)+' m');
+    // Gunakan koordinat kantor yang dikunci jika belum ada config
+    officeConfig={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
+    localStorage.setItem('office_config',JSON.stringify(officeConfig));
+    const dist=getDistance(lat,lng,officeConfig.lat,officeConfig.lng);
+    locationOk=dist<=officeConfig.radius;
+    if(locationOk) setMapStatus('dalam','✓ Dalam zona absensi'+(fakeScore>=2?' ⚠️':''),'Jarak ke kantor: '+Math.round(dist)+' m');
     else setMapStatus('luar','✗ Di luar zona absensi','Jarak: '+Math.round(dist)+' m (radius: 20 m)');
-    document.getElementById('map-radius-note').textContent='Zona: '+fallback.nama+' — Radius 20 m';
+    document.getElementById('map-radius-note').textContent='Zona: Kantor Pusat Surabaya — Radius 20 m';
   }
   document.getElementById('btn-step1-next').disabled=!locationOk;
 }
@@ -1965,89 +1933,6 @@ function setMapStatus(type,title,detail){
   const icon=type==='loading'?'<i class="fas fa-spinner fa-spin"></i>':type==='dalam'?'<i class="fas fa-check-circle"></i>':'<i class="fas fa-times-circle"></i>';
   row.innerHTML=icon+`<div><div style="font-weight:700">${title}</div><div style="font-size:.75rem;margin-top:2px;opacity:.8">${detail}</div></div>`;
 }
-
-// ============================================================
-// MULTI-CABANG ABSENSI
-// ============================================================
-let _cabangCache = null;
-let _cabangCacheTime = 0;
-
-async function loadCabangListAbsen(){
-  const listEl = document.getElementById('cabang-list-absen');
-  if(!listEl) return;
-  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Memuat daftar cabang...</div>';
-  try{
-    const now = Date.now();
-    if(!_cabangCache || now-_cabangCacheTime > 60000){
-      if(!firebaseDb) throw new Error('Firebase belum terhubung');
-      const snap = await firebaseDb.collection('cabang').where('status','==','aktif').get();
-      _cabangCache = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.nama||'').localeCompare(b.nama||'','id'));
-      _cabangCacheTime = now;
-    }
-    const list = _cabangCache;
-    if(!list.length){
-      listEl.innerHTML = '';
-      _renderCabangCard(listEl, {
-        id:'__default__', nama: officeConfig?.nama||'Kantor Pusat',
-        alamat: officeConfig?.address||'', kota:'',
-        lat: officeConfig?.lat, lng: officeConfig?.lng, radius: officeConfig?.radius||20,
-        checkInMachine: officeConfig?.checkInMachine, checkOutMachine: officeConfig?.checkOutMachine, absenceType: officeConfig?.absenceType,
-      });
-      return;
-    }
-    listEl.innerHTML = '';
-    list.forEach(c => _renderCabangCard(listEl, c));
-  }catch(e){
-    listEl.innerHTML = '<div style="text-align:center;padding:16px;color:var(--red);font-size:.82rem"><i class="fas fa-exclamation-circle"></i> '+e.message+'</div>';
-  }
-}
-
-function _renderCabangCard(container, c){
-  const card = document.createElement('button');
-  card.className = 'cabang-absen-card';
-  card.dataset.id = c.id;
-  card.style.cssText = 'width:100%;background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px;text-align:left;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;font-family:inherit';
-  card.innerHTML =
-    '<div style="width:40px;height:40px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;flex-shrink:0">'
-    +'<i class="fas fa-building" style="color:var(--primary)"></i></div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div style="font-weight:700;font-size:.92rem;color:var(--text)">'+( c.nama||'—')+'</div>'
-    +(c.kota?'<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px"><i class="fas fa-map-marker-alt" style="width:12px"></i> '+c.kota+'</div>':'')
-    +(c.alamat?'<div style="font-size:.73rem;color:var(--text-muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.alamat+'</div>':'')
-    +(c.radius?'<div style="font-size:.72rem;color:#0891b2;margin-top:3px"><i class="fas fa-circle-dot"></i> Radius '+c.radius+' m</div>':'')
-    +'</div>'
-    +'<i class="fas fa-chevron-right" style="color:var(--border);flex-shrink:0"></i>';
-  card.onclick = () => pilihCabangAbsen(c, card);
-  container.appendChild(card);
-}
-
-function pilihCabangAbsen(cabang, cardEl){
-  document.querySelectorAll('.cabang-absen-card').forEach(function(c){
-    c.style.borderColor='var(--border)'; c.style.background='var(--card)';
-    const chev=c.querySelector('.fa-chevron-right'); if(chev) chev.style.color='var(--border)';
-  });
-  cardEl.style.borderColor='var(--primary)'; cardEl.style.background='var(--primary-light)';
-  const chev=cardEl.querySelector('.fa-chevron-right'); if(chev) chev.style.color='var(--primary)';
-
-  selectedCabangData = {
-    id: cabang.id, nama: cabang.nama, alamat: cabang.alamat||'', kota: cabang.kota||'',
-    lat: +cabang.lat, lng: +cabang.lng, radius: +(cabang.radius||20),
-    checkInMachine: cabang.checkInMachine || (officeConfig&&officeConfig.checkInMachine) || CHECKIN_MACHINE_CODE,
-    checkOutMachine: cabang.checkOutMachine || (officeConfig&&officeConfig.checkOutMachine) || CHECKOUT_MACHINE_CODE,
-    absenceType: cabang.absenceType || (officeConfig&&officeConfig.absenceType) || ABSENCE_TYPE_CODE,
-  };
-
-  document.getElementById('cabang-selected-nama').textContent = '\u2713 ' + cabang.nama;
-  document.getElementById('cabang-selected-alamat').textContent = [cabang.alamat, cabang.kota].filter(Boolean).join(', ') || 'Tap lanjut untuk verifikasi lokasi';
-  document.getElementById('cabang-selected-info').style.display = 'block';
-  document.getElementById('btn-step0-next').disabled = false;
-}
-
-function applySelectedCabang(){
-  // selectedCabangData sudah diset saat karyawan pilih cabang di step 0
-}
-
-
 function getDistance(la1,lo1,la2,lo2){const R=6371000,dL=(la2-la1)*Math.PI/180,dG=(lo2-lo1)*Math.PI/180,a=Math.sin(dL/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dG/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 function startCamera(){
   if(!navigator.mediaDevices){showToast('Kamera tidak tersedia','error');return;}
@@ -2094,7 +1979,7 @@ function buildConfirmSummary(){
   document.getElementById('confirm-role').textContent=currentUser?.role||'—';
   document.getElementById('confirm-time').textContent='⏰ '+h+' — '+D[now.getDay()]+', '+now.getDate()+' '+M[now.getMonth()]+' '+now.getFullYear();
   if(currentLocation)document.getElementById('confirm-loc').textContent=currentLocation.lat.toFixed(5)+', '+currentLocation.lng.toFixed(5)+' (±'+Math.round(currentLocation.acc||0)+'m)';
-  const _ac=selectedCabangData||officeConfig; if(_ac) document.getElementById('confirm-radius-txt').textContent='Dalam zona '+(_ac.nama||'kantor')+' (radius '+(_ac.radius||20)+'m)';
+  if(officeConfig)document.getElementById('confirm-radius-txt').textContent='Dalam zona '+(officeConfig.nama||'kantor')+' (radius '+officeConfig.radius+'m)';
   else document.getElementById('confirm-radius-row').innerHTML='<i class="fas fa-info-circle" style="color:var(--yellow);width:14px"></i><span style="color:var(--yellow)">Radius belum dikonfigurasi</span>';
   // Tampilkan jenis absen yang dipilih
   const jenisEl=document.getElementById('confirm-jenis-txt');
@@ -2144,11 +2029,9 @@ async function submitAbsen(type){
       gpsWarnings:currentLocation?.warnings||[],
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
-      checkInMachine: type==='masuk' ? ((selectedCabangData||officeConfig)?.checkInMachine || CHECKIN_MACHINE_CODE) : ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE) : null,
-      absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
-      cabangId: selectedCabangData?.id || null,
-      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
+      checkInMachine: type==='masuk' ? (officeConfig?.checkInMachine || CHECKIN_MACHINE_CODE) : (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE),
+      checkOutMachine: type==='pulang' ? (officeConfig?.checkOutMachine || CHECKOUT_MACHINE_CODE) : null,
+      absenceType: officeConfig?.absenceType || ABSENCE_TYPE_CODE
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
@@ -4133,7 +4016,9 @@ async function salinJadwal(uid) {
     const day = date.split('-')[2];
     const newDate = tahun + '-' + String(targetBulan).padStart(2,'0') + '-' + day;
     const ref = firebaseDb.collection('jadwal').doc();
-    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: undefined, updatedAt: new Date().toISOString()}));
+    const jClean = Object.assign({}, j);
+    delete jClean.docId;
+    batch.set(ref, Object.assign(jClean, {date: newDate, bulanKey: targetKey, uid: uid, updatedAt: new Date().toISOString()}));
   });
   try {
     await batch.commit();
