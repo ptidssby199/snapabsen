@@ -1243,8 +1243,15 @@ const ROLE_LEVEL={karyawan:1,manager:2,admin:3};
 function hasRole(r){return(ROLE_LEVEL[currentUser?.userRole]||1)>=ROLE_LEVEL[r];}
 
 // INIT
+function hideLoader(){
+  const ld=document.getElementById('loader');
+  if(!ld||ld.style.display==='none')return;
+  ld.style.opacity='0';
+  setTimeout(()=>{ld.style.display='none';},500);
+}
 window.addEventListener('load',()=>{
-  setTimeout(()=>{document.getElementById('loader').style.opacity='0';setTimeout(()=>document.getElementById('loader').style.display='none',500);},1800);
+  // Sembunyikan loader setelah animasi selesai (maks 2.5 detik dari load)
+  setTimeout(hideLoader, 2500);
   const fc=localStorage.getItem('firebase_config');
   const FIXED_OFFICE={lat:-7.285319,lng:112.759543,radius:20,nama:'Kantor Pusat Surabaya',address:'Jalan Pucang Anom Timur III No. 12, Surabaya'};
   const oc=localStorage.getItem('office_config');
@@ -1279,6 +1286,11 @@ window.addEventListener('load',()=>{
         document.getElementById('page-login').style.display='flex';
       }
     }, 6000);
+  }
+  // Jika Firebase config tidak ada, tampilkan halaman login dan sembunyikan loader
+  if(!fc){
+    document.getElementById('page-login').style.display='flex';
+    setTimeout(hideLoader, 1800);
   }
 });
 function startClock(){
@@ -1952,6 +1964,64 @@ function showLocationWarning(warnings){
   mapEl.parentNode.insertBefore(row, mapEl.nextSibling);
 }
 
+function showTimeManipulationWarning(diffMin, deviceTime, serverTime){
+  // Tampilkan modal peringatan jam dimanipulasi
+  const fmt = d => String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+  const existing = document.getElementById('time-manip-overlay');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'time-manip-overlay';
+  overlay.style.cssText = `
+    position:fixed;top:0;left:0;right:0;bottom:0;
+    background:rgba(0,0,0,.7);z-index:99999;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  `;
+  overlay.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.3)">
+      <div style="font-size:3rem;margin-bottom:8px">⏰</div>
+      <div style="font-size:1.1rem;font-weight:800;color:#dc2626;margin-bottom:6px">Waktu HP Tidak Sesuai!</div>
+      <div style="font-size:.85rem;color:#374151;margin-bottom:16px;line-height:1.5">
+        Sistem mendeteksi jam perangkat Anda berbeda dengan waktu server.<br>
+        Absensi tidak dapat dilanjutkan.
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;margin-bottom:16px;font-size:.82rem;text-align:left">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#6b7280">Jam HP Anda:</span>
+          <span style="font-weight:700;color:#dc2626">${fmt(deviceTime)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#6b7280">Jam Server:</span>
+          <span style="font-weight:700;color:#16a34a">${fmt(serverTime)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid #fecaca;padding-top:6px;margin-top:4px">
+          <span style="color:#6b7280">Selisih:</span>
+          <span style="font-weight:800;color:#dc2626">${diffMin} menit</span>
+        </div>
+      </div>
+      <div style="font-size:.8rem;color:#6b7280;margin-bottom:18px">
+        Silakan atur jam HP ke waktu otomatis (Pengaturan → Tanggal & Waktu → Waktu Otomatis) lalu coba lagi.
+      </div>
+      <button onclick="document.getElementById('time-manip-overlay').remove()"
+        style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:.95rem;cursor:pointer">
+        Tutup
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // Log ke Firestore sebagai pelanggaran
+  if(firebaseDb && currentUser){
+    firebaseDb.collection('time_violations').add({
+      uid: currentUser.uid,
+      userName: currentUser.name,
+      deviceTime: deviceTime.toISOString(),
+      serverTime: serverTime.toISOString(),
+      diffMinutes: diffMin,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    }).catch(()=>{});
+  }
+}
 function retryGPS(){
   const overlay=document.getElementById('fake-gps-overlay');
   if(overlay) overlay.remove();
@@ -2123,72 +2193,43 @@ function dbgLog(msg){
   box.appendChild(line);
   box.scrollTop=box.scrollHeight;
 }
-
-// ============================================================
-// VALIDASI WAKTU SERVER vs WAKTU HP
-// ============================================================
-async function getServerTime(){
-  // Tulis dummy doc ke Firestore, baca serverTimestamp-nya, lalu hapus
-  try{
-    const ref = await firebaseDb.collection('_timecheck').add({
-      t: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    const snap = await ref.get();
-    await ref.delete();
-    const serverTs = snap.data()?.t?.toDate();
-    if(!serverTs) throw new Error('Tidak dapat membaca server time');
-    return serverTs;
-  }catch(e){
-    throw new Error('Gagal verifikasi waktu server: '+e.message);
-  }
-}
-
-async function validateDeviceTime(){
-  const MAX_DIFF_MS = 2 * 60 * 1000;
-  const deviceTime = new Date();
-  const serverTime = await getServerTime();
-  const diffMs = Math.abs(deviceTime - serverTime);
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffSec = Math.floor((diffMs % 60000) / 1000);
-  if(diffMs > MAX_DIFF_MS){
-    const selisih = diffMin > 0 ? diffMin+' menit '+diffSec+' detik' : diffSec+' detik';
-    const arah = deviceTime > serverTime ? 'lebih cepat' : 'lebih lambat';
-    const nl = String.fromCharCode(10);
-    throw new Error(
-      'Waktu perangkat Anda tidak akurat!' + nl + nl +
-      'Waktu HP: ' + deviceTime.toLocaleTimeString('id-ID') + nl +
-      'Waktu Server: ' + serverTime.toLocaleTimeString('id-ID') + nl +
-      'Selisih: ' + selisih + ' (' + arah + ')' + nl + nl +
-      'Aktifkan Tanggal & Waktu Otomatis di Pengaturan HP, lalu coba lagi.'
-    );
-  }
-  return serverTime;
-}
-
 async function submitAbsen(type){
+  const now=new Date(),t=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  // Disable semua tombol absen agar tidak double-submit
   const btns = document.querySelectorAll('.btn-masuk,.btn-pulang');
   btns.forEach(b=>{ b.disabled=true; b._origHTML=b.innerHTML; b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Memverifikasi...'; });
 
-  // 1. Validasi waktu server
-  let serverTime;
+  // ── CEK WAKTU SERVER ──────────────────────────────────────────────
+  // Tolak absen jika jam HP berbeda lebih dari 5 menit dari server
   try{
-    showToast('Memverifikasi waktu server...','info');
-    serverTime = await validateDeviceTime();
-  }catch(timeErr){
-    btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
-    const msg = 'Absensi Ditolak' + String.fromCharCode(10) + String.fromCharCode(10) + timeErr.message;
-    alert(msg);
-    return;
+    dbgLog('Memeriksa waktu server...');
+    const pingRef = await firebaseDb.collection('_ping').add({
+      t: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const pingSnap = await pingRef.get();
+    await pingRef.delete().catch(()=>{});
+    const serverTime = pingSnap.data()?.t?.toDate();
+    if(serverTime){
+      const diffMs = Math.abs(now - serverTime);
+      const diffMin = Math.round(diffMs / 60000);
+      dbgLog('Selisih waktu device vs server: '+diffMin+' menit');
+      if(diffMin > 5){
+        btns.forEach(b=>{ b.disabled=false; if(b._origHTML) b.innerHTML=b._origHTML; });
+        showTimeManipulationWarning(diffMin, now, serverTime);
+        return;
+      }
+    }
+  }catch(e){
+    // Jika ping gagal (offline), lanjutkan — akan tersimpan offline
+    dbgLog('Ping server gagal (offline?): '+e.message);
   }
+  // ─────────────────────────────────────────────────────────────────
 
-  // 2. Proses absen dengan waktu dari server
-  const now = serverTime;
-  const t = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  btns.forEach(b=>{ b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
   showToast('Menyimpan absensi'+(capturedPhoto?' & mengupload foto...':'...'),'info');
-  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto')+' | server: '+t);
-
+  btns.forEach(b=>{ b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
+  dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
+    // Foto untuk absen offline dikompres lebih agresif agar tidak membebani localStorage
     let photoToSave = capturedPhoto;
     if(capturedPhoto && !navigator.onLine){
       photoToSave = await compressPhotoForOffline(capturedPhoto);
@@ -2202,12 +2243,10 @@ async function submitAbsen(type){
       photoBase64: photoToSave || null,
       uid:currentUser?.uid, userName:currentUser?.name, userRole:currentUser?.userRole,
       checkInMachine: type==='masuk' ? ((selectedCabangData||officeConfig)?.checkInMachine || CHECKIN_MACHINE_CODE) : ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE),
-      ...(type==='pulang' ? {checkOutMachine:(selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE} : {}),
+      checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE || null) : null,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
-      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat'),
-      timeValidated: true,
-      serverTimeUsed: now.toISOString()
+      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
     });
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
@@ -3265,6 +3304,7 @@ function loadFirebaseSDK(cfg){
             avatar:prof?.avatar||null
           };
           document.getElementById('loader').style.opacity='0';
+          document.getElementById('loader').style.opacity='0';
           document.getElementById('loader').style.display='none';
           finishLogin(true);
         } else if(!user){
@@ -3297,29 +3337,33 @@ async function fbLogin(email,pass){
 async function fbSaveProfile(uid,data){if(!firebaseDb)return;try{await firebaseDb.collection('users').doc(uid).set(data,{merge:true});}catch(e){console.error(e);}}
 async function fbGetProfile(uid){if(!firebaseDb)return null;try{const d=await firebaseDb.collection('users').doc(uid).get();return d.exists?d.data():null;}catch(e){return null;}}
 async function saveAbsenToFirebase(record){
+  // Hapus semua field yang nilainya undefined — Firestore menolak nilai undefined
+  const sanitized = Object.fromEntries(
+    Object.entries(record).filter(([_, v]) => v !== undefined)
+  );
   // Jika browser terdeteksi offline, langsung simpan ke antrian tanpa mencoba Firestore dulu
   if(!navigator.onLine){
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
-  if(record.photoBase64){
-    dbgLog('Foto '+Math.round(record.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
+  if(sanitized.photoBase64){
+    dbgLog('Foto '+Math.round(sanitized.photoBase64.length/1024)+'KB siap disimpan ke Firestore...');
   }
   dbgLog('Firestore: menyimpan dokumen...');
   if(firebaseDb){
     try{
       await firebaseDb.collection('absensi')
-        .add({...record, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+        .add({...sanitized, createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       dbgLog('Firestore: TERSIMPAN!');
       return {offline:false};
     }catch(e){
       // Gagal kirim meski navigator.onLine=true (misal sinyal lemah/timeout) -> simpan ke antrian juga
       dbgLog('Firestore gagal, masuk antrian offline: '+e.message);
-      queueAbsenPending(record);
+      queueAbsenPending(sanitized);
       return {offline:true, reason:e.message};
     }
   } else {
-    queueAbsenPending(record);
+    queueAbsenPending(sanitized);
     return {offline:true};
   }
 }
@@ -4192,7 +4236,7 @@ async function salinJadwal(uid) {
     const day = date.split('-')[2];
     const newDate = tahun + '-' + String(targetBulan).padStart(2,'0') + '-' + day;
     const ref = firebaseDb.collection('jadwal').doc();
-    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: undefined, updatedAt: new Date().toISOString()}));
+    batch.set(ref, Object.assign({}, j, {date: newDate, bulanKey: targetKey, uid: uid, docId: ref.id, updatedAt: new Date().toISOString()}));
   });
   try {
     await batch.commit();
