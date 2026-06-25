@@ -2506,20 +2506,23 @@ async function saveFaceRef(){
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
   try{
+    // Buat thumbnail kecil (60x60px ~2KB) hanya untuk preview di admin panel
+    // Foto asli TIDAK disimpan ke Firestore (terlalu besar, akan melewati limit 1MB)
+    const thumb = await _makeThumb(faceEnrollPhotoData, 80, 80);
+
     const updateData = {
-      faceRef: faceEnrollPhotoData,
+      faceRef: thumb,                   // thumbnail kecil saja untuk preview
       faceRefUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       faceRefUpdatedBy: currentUser?.name || 'Admin',
     };
     if(faceEnrollDescriptor){
-      // Simpan descriptor sebagai object biasa (Firestore tidak support Float32Array langsung)
+      // Descriptor: 128 angka float ~1KB — aman disimpan di Firestore
       updateData.faceDescriptor = Array.from(faceEnrollDescriptor).reduce((o,v,i)=>{ o[i]=v; return o; }, {});
     }
     await firebaseDb.collection('users').doc(faceEnrollUid).update(updateData);
     showToast('Foto referensi wajah berhasil disimpan!', 'success');
-    // Perbarui allUsers lokal
     const idx = allUsers.findIndex(u => u.uid === faceEnrollUid);
-    if(idx >= 0){ allUsers[idx].faceRef = faceEnrollPhotoData; allUsers[idx].faceDescriptor = updateData.faceDescriptor; }
+    if(idx >= 0){ allUsers[idx].faceRef = thumb; allUsers[idx].faceDescriptor = updateData.faceDescriptor; }
     renderUserList(filteredUsers.length ? filteredUsers : allUsers);
     closeFaceEnroll();
   }catch(e){
@@ -2527,6 +2530,24 @@ async function saveFaceRef(){
     btn.disabled = false;
     btn.innerHTML = '<i class="fas fa-save"></i> Simpan Referensi';
   }
+}
+
+// Helper: buat thumbnail dari dataUrl, max w x h px, kualitas rendah
+function _makeThumb(dataUrl, maxW, maxH){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w=img.width, h=img.height;
+      if(w>h){ h=Math.round(h*maxW/w); w=maxW; }
+      else { w=Math.round(w*maxH/h); h=maxH; }
+      const c=document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg', 0.5));
+    };
+    img.onerror=()=>resolve('');
+    img.src=dataUrl;
+  });
 }
 function resetCameraUI(){
   document.getElementById('camera-video').style.display='none';document.getElementById('camera-canvas').style.display='none';
