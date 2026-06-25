@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>IPres — IDS Presence System</title>
+<title>IPresS — IDS Presence System</title>
 <!-- PWA -->
-<meta name="application-name" content="IPres">
+<meta name="application-name" content="IPresS">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="IPres">
+<meta name="apple-mobile-web-app-title" content="IPresS">
 <meta name="theme-color" content="#1a56db">
 <meta name="description" content="Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie">
 <link rel="manifest" href="manifest.json">
@@ -18,6 +18,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/dist/face-api.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -478,26 +479,52 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);}
 .empty-state i{font-size:2.5rem;margin-bottom:12px;opacity:.4;display:block;}
 .empty-state p{font-size:.88rem;}
+
+/* ===== FACE VERIFICATION ===== */
+.face-verify-status{padding:10px 14px;border-radius:10px;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px;transition:all .3s;}
+.fvs-loading{background:#eff6ff;color:#1d4ed8;border:1.5px solid #bfdbfe;}
+.fvs-success{background:var(--green-light);color:var(--green);border:1.5px solid #bbf7d0;}
+.fvs-fail{background:var(--red-light);color:var(--red);border:1.5px solid #fecaca;}
+.fvs-warn{background:var(--yellow-light);color:var(--yellow);border:1.5px solid #fde68a;}
+.fvs-noref{background:#f5f3ff;color:#7c3aed;border:1.5px solid #ddd6fe;}
+.face-match-bar-wrap{height:8px;background:#e2e8f0;border-radius:99px;overflow:hidden;margin:6px 0 2px;}
+.face-match-bar{height:100%;border-radius:99px;transition:width .5s ease,background .3s;}
+.btn-u-face{padding:5px 8px;border-radius:6px;border:1.5px solid #0891b2;background:#e0f2fe;color:#0891b2;font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;}
+.btn-u-face:hover{background:#0891b2;color:#fff;}
+.btn-u-face.has-ref{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.btn-u-face.has-ref:hover{background:var(--green);color:#fff;}
+/* Modal face enrollment */
+#modal-face-enroll{display:none;position:fixed;inset:0;z-index:520;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;}
+#modal-face-enroll.open{display:flex;}
+.face-enroll-box{background:var(--card);border-radius:20px;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;animation:fadeScale .25s ease;}
+.face-enroll-hdr{background:linear-gradient(135deg,#0369a1,#0891b2);padding:18px 20px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;color:#fff;}
+.face-enroll-hdr h3{font-size:.95rem;font-weight:700;}
+.face-enroll-body{padding:18px;}
+.face-ref-preview{width:100%;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center;margin-bottom:12px;position:relative;border:2px solid var(--border);}
+.face-ref-preview img{width:100%;height:100%;object-fit:cover;}
+.face-ref-preview .fref-empty{color:rgba(255,255,255,.4);text-align:center;font-size:.82rem;}
+.face-detected-badge{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:99px;white-space:nowrap;}
+.face-detect-fail-badge{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:var(--red);color:#fff;font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:99px;white-space:nowrap;}
 </style>
 </head>
 <body>
 
-<div id="loader"><div class="logo-big">I<span>Pres</span></div><p>IDS Presence System</p><div class="loader-bar"><div class="loader-bar-fill"></div></div></div>
+<div id="loader"><div class="logo-big">I<span>PresS</span></div><p>IDS Presence System</p><div class="loader-bar"><div class="loader-bar-fill"></div></div></div>
 
-<div id="session-check"><div class="brand">I<span>Pres</span></div><p><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Memverifikasi sesi...</p></div>
+<div id="session-check"><div class="brand">I<span>PresS</span></div><p><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Memverifikasi sesi...</p></div>
 <div id="page-login">
   <div class="login-card">
-    <div class="login-logo"><div class="brand">I<span>Pres</span></div><p>PT. Indonesia Dwi Sembilan</p></div>
+    <div class="login-logo"><div class="brand">I<span>PresS</span></div><p>PT. Indonesia Dwi Sembilan</p></div>
     <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
     <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
     <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
-    <div class="login-firebase-note"><i class="fas fa-fire"></i><span>Konfigurasi IDS Presence di <b>Profil → Firebase Config</b> setelah login.</span></div>
+    <div class="login-firebase-note"><i class="fas fa-fire"></i><span>Konfigurasi IDS Presence System di <b>Profil → Firebase Config</b> setelah login.</span></div>
   </div>
 </div>
 
 <div id="page-app">
   <div class="topbar">
-    <div class="brand">I<span>Pres</span></div>
+    <div class="brand">I<span>PresS</span></div>
     <div class="topbar-right">
       <span class="role-pill karyawan" id="topbar-role-pill">KARYAWAN</span>
       <button class="topbar-btn" onclick="openFirebaseModal()"><i class="fas fa-fire" style="color:#f97316"></i></button>
@@ -721,7 +748,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
       <div class="menu-section-title">Tentang</div>
       <div class="menu-list">
-        <button class="menu-item" onclick="showToast('IDS-Abs v2.0.0')"><div class="mi-icon" style="background:var(--primary-light)"><i class="fas fa-info-circle" style="color:var(--primary)"></i></div><div><div class="mi-label">Tentang Aplikasi</div><div class="mi-desc">IDS-Abs v2.0.0</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
+        <button class="menu-item" onclick="showToast('IpresS v2.0.0')"><div class="mi-icon" style="background:var(--primary-light)"><i class="fas fa-info-circle" style="color:var(--primary)"></i></div><div><div class="mi-label">Tentang Aplikasi</div><div class="mi-desc">IPresS v1.9.9</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
       </div>
       <button class="btn-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Keluar dari Aplikasi</button>
     </div>
@@ -1062,6 +1089,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
       <!-- Status verifikasi -->
       <div id="verif-status" style="display:none;text-align:center;padding:12px;border-radius:10px;margin-bottom:12px;font-weight:700;font-size:.9rem"></div>
+      <!-- Face verification result -->
+      <div id="face-verif-result" style="display:none;margin-bottom:12px">
+        <div class="face-verify-status fvs-loading" id="face-verif-msg"><i class="fas fa-spinner fa-spin"></i> Memverifikasi wajah...</div>
+        <div class="face-match-bar-wrap"><div class="face-match-bar" id="face-match-bar" style="width:0;background:var(--primary)"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-muted)"><span>Kecocokan wajah</span><span id="face-match-pct">0%</span></div>
+      </div>
       <!-- Submit button -->
       <div style="padding:0 0 16px">
         <button class="btn-masuk" id="btn-submit-absen" onclick="doSubmitAbsen()" disabled style="width:100%;margin-bottom:8px;justify-content:center;opacity:.5"><i class="fas fa-paper-plane"></i> <span id="btn-submit-label">Submit Absen</span></button>
@@ -1227,7 +1260,7 @@ let jadwalUsers=[];
 
 // STATE
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
-// Kode identitas IDS-Abs sebagai "mesin absen" untuk sync ke SQL Server (T_EmployeeAbsen).
+// Kode identitas snapAbsen sebagai "mesin absen" untuk sync ke SQL Server (T_EmployeeAbsen).
 // Saat ini hanya 1 lokasi kantor, jadi nilainya tetap. Jika nanti ada cabang baru,
 // ubah logic ini agar mengembalikan kode berbeda sesuai lokasi/radius yang dipakai.
 const CHECKIN_MACHINE_CODE='SB1';
@@ -1556,6 +1589,8 @@ function closeAbsenModal(){
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
   resetCameraUI();capturedPhoto=null;currentLocation=null;locationOk=false;selectedAbsenType=null;verifMethod=null;verifDone=false;
   selectedCabangData=null;
+  window._faceWarnFlag=false;window._faceWarnSimilarity=null;
+  const fvr=document.getElementById('face-verif-result');if(fvr)fvr.style.display='none';
 }
 function goToStep(n){
   document.querySelectorAll('.absen-step-content').forEach(s=>s.classList.remove('active'));
@@ -1637,7 +1672,7 @@ async function doFingerprintVerif(){
     const cred=await navigator.credentials.create({
       publicKey:{
         challenge,
-        rp:{name:'IDS-Abs',id:rpId},
+        rp:{name:'snapAbsen',id:rpId},
         user:{id:userId,name:userName,displayName:userName},
         pubKeyCredParams:[
           {alg:-7,type:'public-key'},   // ES256
@@ -2141,16 +2176,357 @@ function capturePhoto(){
   capturedPhoto=c.toDataURL('image/jpeg',.65);c.style.display='block';v.style.display='none';
   document.getElementById('cam-overlay').style.display='none';document.getElementById('cam-taken-badge').style.display='block';
   if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}
-  // Jika di step verifikasi selfie, enable submit button
+  // Jika di step verifikasi selfie, jalankan face verification
   const step3Active=document.getElementById('step-3').classList.contains('active');
   if(step3Active){
-    verifMethod='selfie';verifDone=true;
-    showVerifStatus('success','✅ Foto selfie berhasil diambil!');
-    const btnSubmit=document.getElementById('btn-submit-absen');
-    btnSubmit.disabled=false;btnSubmit.style.opacity='1';
-    btnSubmit.style.background='#16a34a';
+    verifMethod='selfie';
+    showToast('Foto diambil, memverifikasi wajah...','info');
+    runFaceVerification(c);
   }
-  showToast('Foto berhasil diambil!','success');
+}
+
+// ============================================================
+// FACE VERIFICATION — face-api.js
+// ============================================================
+let faceApiReady = false;
+let faceApiLoading = false;
+
+const FACE_API_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/model';
+const FACE_MATCH_THRESHOLD = 0.50; // Jarak maksimum (lebih kecil = lebih ketat). 0.50 = cukup ketat
+
+async function loadFaceApiModels(){
+  if(faceApiReady) return true;
+  if(faceApiLoading) {
+    // tunggu loading selesai
+    for(let i=0;i<30;i++){
+      await new Promise(r=>setTimeout(r,500));
+      if(faceApiReady) return true;
+    }
+    return false;
+  }
+  faceApiLoading = true;
+  try{
+    if(typeof faceapi === 'undefined') throw new Error('face-api.js tidak termuat');
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API_MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_API_MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_API_MODEL_URL),
+    ]);
+    faceApiReady = true;
+    faceApiLoading = false;
+    console.log('[FaceAPI] Models loaded OK');
+    return true;
+  }catch(e){
+    faceApiLoading = false;
+    console.error('[FaceAPI] Model load error:', e);
+    return false;
+  }
+}
+
+// Preload saat halaman idle agar tidak delay saat absen
+(function preloadFaceApi(){
+  if(document.readyState === 'complete'){
+    setTimeout(loadFaceApiModels, 3000);
+  } else {
+    window.addEventListener('load', ()=> setTimeout(loadFaceApiModels, 3000));
+  }
+})();
+
+async function getFaceDescriptor(imgEl){
+  const options = new faceapi.TinyFaceDetectorOptions({ inputSize:320, scoreThreshold:0.4 });
+  const result = await faceapi
+    .detectSingleFace(imgEl, options)
+    .withFaceLandmarks(true)
+    .withFaceDescriptor();
+  return result ? result.descriptor : null;
+}
+
+async function runFaceVerification(canvasEl){
+  const fvResult = document.getElementById('face-verif-result');
+  const fvMsg    = document.getElementById('face-verif-msg');
+  const fvBar    = document.getElementById('face-match-bar');
+  const fvPct    = document.getElementById('face-match-pct');
+  const btnSubmit= document.getElementById('btn-submit-absen');
+
+  fvResult.style.display = 'block';
+  fvMsg.className = 'face-verify-status fvs-loading';
+  fvMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memuat model AI wajah...';
+  fvBar.style.width = '0';
+  fvPct.textContent = '—';
+  btnSubmit.disabled = true;
+  btnSubmit.style.opacity = '.5';
+  verifDone = false;
+
+  try{
+    // 1. Pastikan model termuat
+    const ready = await loadFaceApiModels();
+    if(!ready){
+      // Model gagal muat — lewati verifikasi wajah (jangan blokir absen)
+      _faceVerifSkip('Model AI tidak tersedia. Selfie disimpan tanpa verifikasi wajah.');
+      return;
+    }
+    document.getElementById('face-enroll-model-note')&&(document.getElementById('face-enroll-model-note').innerHTML='<i class="fas fa-check-circle" style="color:var(--green);margin-right:4px"></i>Model AI siap');
+
+    fvMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mendeteksi wajah di selfie...';
+
+    // 2. Ambil descriptor dari selfie
+    const selfieDesc = await getFaceDescriptor(canvasEl);
+    if(!selfieDesc){
+      fvMsg.className = 'face-verify-status fvs-fail';
+      fvMsg.innerHTML = '<i class="fas fa-times-circle"></i> Wajah tidak terdeteksi di foto selfie. Coba ambil foto lagi dengan pencahayaan lebih terang.';
+      showVerifStatus('error','❌ Wajah tidak terdeteksi. Ambil ulang selfie.');
+      return;
+    }
+
+    // 3. Ambil descriptor referensi dari Firestore
+    fvMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengambil data referensi wajah...';
+    if(!firebaseDb || !currentUser?.uid){
+      _faceVerifSkip('Tidak dapat mengambil data referensi. Selfie disimpan tanpa verifikasi wajah.');
+      return;
+    }
+    const userDoc = await firebaseDb.collection('users').doc(currentUser.uid).get();
+    const userData = userDoc.data();
+    if(!userData?.faceDescriptor){
+      _faceVerifSkip('Foto referensi wajah belum diatur oleh admin. Hubungi admin untuk mendaftarkan wajah Anda.');
+      return;
+    }
+
+    // 4. Bandingkan descriptor
+    fvMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Membandingkan wajah...';
+    const refDescArr = new Float32Array(Object.values(userData.faceDescriptor));
+    const distance = faceapi.euclideanDistance(selfieDesc, refDescArr);
+    const similarity = Math.max(0, Math.min(100, Math.round((1 - distance) * 100)));
+    const pct = similarity + '%';
+    fvBar.style.width = pct;
+    fvPct.textContent = pct;
+
+    if(distance <= FACE_MATCH_THRESHOLD){
+      // COCOK
+      fvBar.style.background = 'var(--green)';
+      fvMsg.className = 'face-verify-status fvs-success';
+      fvMsg.innerHTML = `<i class="fas fa-check-circle"></i> Wajah terverifikasi! Kecocokan ${similarity}%`;
+      showVerifStatus('success', `✅ Wajah terverifikasi (${similarity}% cocok)`);
+      verifDone = true;
+      btnSubmit.disabled = false;
+      btnSubmit.style.opacity = '1';
+      btnSubmit.style.background = 'var(--green)';
+    } else if(distance <= FACE_MATCH_THRESHOLD + 0.15){
+      // RAGU-RAGU — biarkan absen tapi beri peringatan
+      fvBar.style.background = 'var(--yellow)';
+      fvMsg.className = 'face-verify-status fvs-warn';
+      fvMsg.innerHTML = `<i class="fas fa-exclamation-circle"></i> Wajah kurang cocok (${similarity}%). Foto dicatat untuk review admin.`;
+      showVerifStatus('warning', `⚠️ Kecocokan wajah rendah (${similarity}%). Absen tercatat dengan tanda peringatan.`);
+      verifDone = true; // tetap bisa submit, tapi ditandai
+      capturedPhoto = capturedPhoto; // simpan foto
+      btnSubmit.disabled = false;
+      btnSubmit.style.opacity = '1';
+      btnSubmit.style.background = 'var(--yellow)';
+      // Tandai untuk review
+      window._faceWarnFlag = true;
+      window._faceWarnSimilarity = similarity;
+    } else {
+      // TIDAK COCOK — blokir
+      fvBar.style.background = 'var(--red)';
+      fvMsg.className = 'face-verify-status fvs-fail';
+      fvMsg.innerHTML = `<i class="fas fa-times-circle"></i> Wajah TIDAK cocok (${similarity}%). Absen ditolak. Pastikan Anda yang melakukan absen sendiri.`;
+      showVerifStatus('error', `❌ Wajah tidak cocok (${similarity}%). Absen ditolak!`);
+      verifDone = false;
+      btnSubmit.disabled = true;
+      btnSubmit.style.opacity = '.5';
+      // Log pelanggaran ke Firestore
+      if(firebaseDb && currentUser){
+        firebaseDb.collection('face_violations').add({
+          uid: currentUser.uid,
+          userName: currentUser.name,
+          similarity,
+          distance: distance.toFixed(4),
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(()=>{});
+      }
+    }
+  }catch(e){
+    console.error('[FaceVerif] Error:', e);
+    _faceVerifSkip('Verifikasi wajah gagal: ' + (e.message||'unknown error') + '. Absen dilanjutkan tanpa verifikasi wajah.');
+  }
+}
+
+function _faceVerifSkip(msg){
+  const fvResult = document.getElementById('face-verif-result');
+  const fvMsg    = document.getElementById('face-verif-msg');
+  const btnSubmit= document.getElementById('btn-submit-absen');
+  fvResult.style.display = 'block';
+  fvMsg.className = 'face-verify-status fvs-noref';
+  fvMsg.innerHTML = '<i class="fas fa-circle-info"></i> ' + msg;
+  showVerifStatus('warning', '⚠️ ' + msg);
+  // Izinkan absen tetap bisa dilakukan (foto tetap tersimpan)
+  verifDone = true;
+  btnSubmit.disabled = false;
+  btnSubmit.style.opacity = '1';
+  btnSubmit.style.background = 'var(--yellow)';
+}
+
+// ============================================================
+// FACE ENROLLMENT — Admin Panel
+// ============================================================
+let faceEnrollUid = null;
+let faceEnrollDescriptor = null;
+let faceEnrollPhotoData = null;
+
+async function openFaceEnroll(uid, name){
+  if(!hasRole('admin')){ showToast('Akses ditolak — hanya Admin','error'); return; }
+  faceEnrollUid = uid;
+  faceEnrollDescriptor = null;
+  faceEnrollPhotoData = null;
+
+  document.getElementById('face-enroll-username').textContent = name + ' — Foto Referensi Wajah';
+  document.getElementById('face-ref-img').style.display = 'none';
+  document.getElementById('fref-empty-msg').style.display = 'block';
+  document.getElementById('face-ref-canvas').style.display = 'none';
+  document.getElementById('face-enroll-info').style.display = 'none';
+  document.getElementById('face-enroll-fail').style.display = 'none';
+  document.getElementById('face-detect-status').style.display = 'none';
+  document.getElementById('btn-save-face-ref').disabled = true;
+  document.getElementById('btn-save-face-ref').style.opacity = '.5';
+  document.getElementById('face-ref-file-input').value = '';
+  document.getElementById('face-ref-camera-input').value = '';
+
+  const modal = document.getElementById('modal-face-enroll');
+  modal.style.display = '';
+  modal.classList.add('open');
+
+  // Cek apakah sudah ada foto referensi
+  if(firebaseDb){
+    try{
+      const doc = await firebaseDb.collection('users').doc(uid).get();
+      const data = doc.data();
+      if(data?.faceRef){
+        document.getElementById('face-ref-img').src = data.faceRef;
+        document.getElementById('face-ref-img').style.display = 'block';
+        document.getElementById('fref-empty-msg').style.display = 'none';
+        const ds = document.getElementById('face-detect-status');
+        ds.style.display = 'block';
+        ds.style.background = '#f0fdf4'; ds.style.color = '#15803d';
+        ds.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>Foto referensi sudah ada. Upload baru untuk mengganti.';
+      }
+    }catch(e){ console.error(e); }
+  }
+
+  // Preload model di background
+  const note = document.getElementById('face-enroll-model-note');
+  if(faceApiReady){
+    note.innerHTML = '<i class="fas fa-check-circle" style="color:var(--green);margin-right:4px"></i>Model AI siap';
+  } else {
+    note.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:4px"></i>Memuat model AI wajah... (±5 MB, sekali saja)';
+    loadFaceApiModels().then(ok=>{
+      note.innerHTML = ok
+        ? '<i class="fas fa-check-circle" style="color:var(--green);margin-right:4px"></i>Model AI siap'
+        : '<i class="fas fa-exclamation-circle" style="color:var(--red);margin-right:4px"></i>Model AI gagal dimuat. Coba refresh halaman.';
+    });
+  }
+}
+
+function closeFaceEnroll(){
+  document.getElementById('modal-face-enroll').classList.remove('open');
+  faceEnrollUid = null;
+  faceEnrollDescriptor = null;
+  faceEnrollPhotoData = null;
+}
+
+async function handleFaceRefUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!file.type.startsWith('image/')){ showToast('File harus berupa gambar','error'); return; }
+
+  const ds = document.getElementById('face-detect-status');
+  ds.style.display = 'block';
+  ds.style.background = '#eff6ff'; ds.style.color = '#1d4ed8';
+  ds.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px"></i>Memproses foto...';
+
+  document.getElementById('face-enroll-info').style.display = 'none';
+  document.getElementById('face-enroll-fail').style.display = 'none';
+  document.getElementById('btn-save-face-ref').disabled = true;
+  document.getElementById('btn-save-face-ref').style.opacity = '.5';
+  faceEnrollDescriptor = null;
+  faceEnrollPhotoData = null;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    // Tampilkan preview
+    const imgEl = document.getElementById('face-ref-img');
+    imgEl.src = dataUrl;
+    imgEl.style.display = 'block';
+    document.getElementById('fref-empty-msg').style.display = 'none';
+    imgEl.onload = async () => {
+      // Pastikan model siap
+      const ready = await loadFaceApiModels();
+      if(!ready){
+        ds.style.background = '#fef9c3'; ds.style.color = '#92400e';
+        ds.innerHTML = '<i class="fas fa-exclamation-circle" style="margin-right:5px"></i>Model AI tidak tersedia. Simpan foto saja (tanpa verifikasi otomatis).';
+        // Simpan foto saja tanpa descriptor
+        faceEnrollPhotoData = dataUrl;
+        document.getElementById('btn-save-face-ref').disabled = false;
+        document.getElementById('btn-save-face-ref').style.opacity = '1';
+        return;
+      }
+      ds.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px"></i>Mendeteksi wajah...';
+      try{
+        const descriptor = await getFaceDescriptor(imgEl);
+        if(descriptor){
+          faceEnrollDescriptor = descriptor;
+          faceEnrollPhotoData = dataUrl;
+          ds.style.background = '#f0fdf4'; ds.style.color = '#15803d';
+          ds.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>Wajah terdeteksi! Siap disimpan.';
+          document.getElementById('face-enroll-info').style.display = 'block';
+          document.getElementById('face-enroll-info-detail').textContent =
+            'Descriptor wajah (128 dimensi) berhasil diekstrak dan siap disimpan.';
+          document.getElementById('btn-save-face-ref').disabled = false;
+          document.getElementById('btn-save-face-ref').style.opacity = '1';
+        } else {
+          ds.style.background = 'var(--red-light)'; ds.style.color = 'var(--red)';
+          ds.innerHTML = '<i class="fas fa-times-circle" style="margin-right:5px"></i>Wajah tidak terdeteksi.';
+          document.getElementById('face-enroll-fail').style.display = 'block';
+        }
+      }catch(err){
+        ds.style.background = 'var(--red-light)'; ds.style.color = 'var(--red)';
+        ds.innerHTML = '<i class="fas fa-times-circle" style="margin-right:5px"></i>Error: ' + err.message;
+      }
+    };
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveFaceRef(){
+  if(!faceEnrollUid){ showToast('UID user tidak ditemukan','error'); return; }
+  if(!faceEnrollPhotoData){ showToast('Belum ada foto yang dipilih','error'); return; }
+  if(!firebaseDb){ showToast('Firebase belum terhubung','error'); return; }
+
+  const btn = document.getElementById('btn-save-face-ref');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+  try{
+    const updateData = {
+      faceRef: faceEnrollPhotoData,
+      faceRefUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      faceRefUpdatedBy: currentUser?.name || 'Admin',
+    };
+    if(faceEnrollDescriptor){
+      // Simpan descriptor sebagai object biasa (Firestore tidak support Float32Array langsung)
+      updateData.faceDescriptor = Array.from(faceEnrollDescriptor).reduce((o,v,i)=>{ o[i]=v; return o; }, {});
+    }
+    await firebaseDb.collection('users').doc(faceEnrollUid).update(updateData);
+    showToast('Foto referensi wajah berhasil disimpan!', 'success');
+    // Perbarui allUsers lokal
+    const idx = allUsers.findIndex(u => u.uid === faceEnrollUid);
+    if(idx >= 0){ allUsers[idx].faceRef = faceEnrollPhotoData; allUsers[idx].faceDescriptor = updateData.faceDescriptor; }
+    renderUserList(filteredUsers.length ? filteredUsers : allUsers);
+    closeFaceEnroll();
+  }catch(e){
+    showToast('Gagal simpan: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-save"></i> Simpan Referensi';
+  }
 }
 function resetCameraUI(){
   document.getElementById('camera-video').style.display='none';document.getElementById('camera-canvas').style.display='none';
@@ -2247,8 +2623,12 @@ async function submitAbsen(type){
       checkOutMachine: type==='pulang' ? ((selectedCabangData||officeConfig)?.checkOutMachine || CHECKOUT_MACHINE_CODE || null) : null,
       absenceType: (selectedCabangData||officeConfig)?.absenceType || ABSENCE_TYPE_CODE,
       cabangId: selectedCabangData?.id || null,
-      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat')
+      cabangNama: selectedCabangData?.nama || (officeConfig?.nama || 'Kantor Pusat'),
+      faceWarn: window._faceWarnFlag || false,
+      faceWarnSimilarity: window._faceWarnFlag ? (window._faceWarnSimilarity||null) : null,
     });
+    window._faceWarnFlag = false;
+    window._faceWarnSimilarity = null;
     if(type==='masuk'){document.getElementById('stat-masuk').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Masuk ✓';}
     else{document.getElementById('stat-pulang').textContent=t;document.getElementById('today-status').textContent='Sudah Absen Pulang ✓';}
     closeAbsenModal();
@@ -2502,7 +2882,7 @@ async function loadLaporan(silent=false){
       laporanJadwalMap[r.uid][r.date]=r;
     });
     // Sort absensi
-    laporanData=IDS-Abs.docs.map(d=>({id:d.id,...d.data()}))
+    laporanData=snapAbsen.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>{
         if(a.date!==b.date) return a.date>b.date?1:-1;
         return (a.time||'')>(b.time||'')?1:-1;
@@ -2557,7 +2937,7 @@ function renderLaporanTable(data){
   const grouped={};
   filtered.forEach(r=>{
     const key=(r.uid||'x')+'|'+(r.date||'');
-    if(!grouped[key]) grouped[key]={uid:r.uid,name:r.userName||'—',date:r.date,masuk:'—',pulang:'—',lat:null,lng:null,photoMasuk:null,photoPulang:null,accMasuk:null,fakeScoreMasuk:0};
+    if(!grouped[key]) grouped[key]={uid:r.uid,name:r.userName||'—',date:r.date,masuk:'—',pulang:'—',lat:null,lng:null,photoMasuk:null,photoPulang:null,accMasuk:null,fakeScoreMasuk:0,latPulang:null,lngPulang:null,accPulang:null,fakeScorePulang:0,gpsWarnings:[],gpsWarningsPulang:[]};
     if(r.type==='masuk'){
       grouped[key].masuk=r.time;
       grouped[key].lat=r.lat; grouped[key].lng=r.lng;
@@ -2570,6 +2950,11 @@ function renderLaporanTable(data){
     if(r.type==='pulang'){
       grouped[key].pulang=r.time;
       grouped[key].photoPulang=r.photoURL||r.photoBase64||null;
+      grouped[key].latPulang=r.lat||null;
+      grouped[key].lngPulang=r.lng||null;
+      grouped[key].accPulang=r.accuracy||null;
+      grouped[key].fakeScorePulang=r.fakeGpsScore||0;
+      grouped[key].gpsWarningsPulang=r.gpsWarnings||[];
       grouped[key].docIdPulang=r.id;
     }
   });
@@ -3060,7 +3445,7 @@ async function cariAlamat(){
   resultDiv.innerHTML='<div style="padding:10px 12px;color:#0369a1;font-size:.82rem"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Mencari alamat...</div>';
   try{
     const url='https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q='+encodeURIComponent(q+', Indonesia');
-    const res=await fetch(url,{headers:{'Accept-Language':'id','User-Agent':'IDS-Abs/1.0'}});
+    const res=await fetch(url,{headers:{'Accept-Language':'id','User-Agent':'snapAbsen/1.0'}});
     const results=await res.json();
     if(!results.length){
       resultDiv.innerHTML='<div style="padding:10px 12px;color:#dc2626;font-size:.82rem"><i class="fas fa-times-circle" style="margin-right:6px"></i>Alamat tidak ditemukan. Coba perjelas nama jalan atau kota.</div>';
@@ -3518,6 +3903,7 @@ function renderUserList(users){
         <button class="btn-u-edit" onclick="openUserModal('edit','${u.uid}')"><i class="fas fa-pen"></i> Edit</button>
         <button class="btn-u-role" onclick="openRoleModal('${u.uid}','${(u.name||'').replace(/'/g,"\'")}','${u.userRole||'karyawan'}')" ${isSelf(u.uid)?'disabled':''}><i class="fas fa-shield-alt"></i> Role</button>
         <button class="btn-u-del" onclick="openDeleteConfirm('${u.uid}','${(u.name||'').replace(/'/g,"\'")}','${u.email||''}')" ${isSelf(u.uid)?'disabled':''}><i class="fas fa-trash"></i> Hapus</button>
+        <button class="btn-u-face ${u.faceRef?'has-ref':''}" onclick="openFaceEnroll('${u.uid}','${(u.name||'').replace(/'/g,"\\'")}')"><i class="fas fa-face-smile-wink"></i> ${u.faceRef?'✓ Wajah':'Foto Wajah'}</button>
       </div>
     </div>`).join('');
 }
@@ -4399,7 +4785,7 @@ function lihatDetail(btnOrUid, date, tab) {
   if (!currentDetailRows[key]) {
     laporanData.forEach(r => {
       const k = (r.uid||'x')+'|'+(r.date||'');
-      if (!currentDetailRows[k]) currentDetailRows[k] = {uid:r.uid,name:r.userName||'—',date:r.date,masuk:'—',pulang:'—',lat:null,lng:null,photoMasuk:null,photoPulang:null,accMasuk:null,fakeScoreMasuk:0,gpsWarnings:[]};
+    if(!currentDetailRows[k]) currentDetailRows[k] = {uid:r.uid,name:r.userName||'—',date:r.date,masuk:'—',pulang:'—',lat:null,lng:null,photoMasuk:null,photoPulang:null,accMasuk:null,fakeScoreMasuk:0,gpsWarnings:[],latPulang:null,lngPulang:null,accPulang:null,fakeScorePulang:0,gpsWarningsPulang:[]};
       if (r.type==='masuk') {
         currentDetailRows[k].masuk=r.time;
         currentDetailRows[k].lat=r.lat; currentDetailRows[k].lng=r.lng;
@@ -4411,6 +4797,11 @@ function lihatDetail(btnOrUid, date, tab) {
       if (r.type==='pulang') {
         currentDetailRows[k].pulang=r.time;
         currentDetailRows[k].photoPulang=r.photoURL||r.photoBase64||null;
+        currentDetailRows[k].latPulang=r.lat||null;
+        currentDetailRows[k].lngPulang=r.lng||null;
+        currentDetailRows[k].accPulang=r.accuracy||null;
+        currentDetailRows[k].fakeScorePulang=r.fakeGpsScore||0;
+        currentDetailRows[k].gpsWarningsPulang=r.gpsWarnings||[];
       }
     });
   }
@@ -4449,12 +4840,46 @@ function lihatDetail(btnOrUid, date, tab) {
     gpsTxt.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>Lokasi GPS valid';
   }
 
-  // Koordinat
+  // Koordinat masuk
   const coordEl = document.getElementById('rd-koordinat');
   if (row.lat && row.lng) {
     coordEl.innerHTML = '<a href="https://maps.google.com/?q='+row.lat+','+row.lng+'" target="_blank" style="color:var(--primary);text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:4px"></i>'+row.lat.toFixed(6)+', '+row.lng.toFixed(6)+'</a>';
   } else {
     coordEl.textContent = '—';
+  }
+
+  // Koordinat pulang
+  const coordPulangEl = document.getElementById('rd-koordinat-pulang');
+  if (coordPulangEl) {
+    if (row.latPulang && row.lngPulang) {
+      coordPulangEl.innerHTML = '<a href="https://maps.google.com/?q='+row.latPulang+','+row.lngPulang+'" target="_blank" style="color:var(--accent);text-decoration:none"><i class="fas fa-external-link-alt" style="margin-right:4px"></i>'+row.latPulang.toFixed(6)+', '+row.lngPulang.toFixed(6)+'</a>';
+    } else {
+      coordPulangEl.textContent = '—';
+    }
+  }
+
+  // Akurasi pulang
+  const accPulangEl = document.getElementById('rd-akurasi-pulang');
+  if (accPulangEl) accPulangEl.textContent = row.accPulang ? '±'+Math.round(row.accPulang)+'m' : '—';
+
+  // Fake GPS pulang
+  const fakePulangEl = document.getElementById('rd-fakescore-pulang');
+  if (fakePulangEl) {
+    const fp = row.fakeScorePulang || 0;
+    fakePulangEl.textContent = fp+'/10';
+    fakePulangEl.style.color = fp>=4 ? 'var(--red)' : fp>=2 ? 'var(--yellow)' : 'var(--green)';
+  }
+
+  // GPS warnings pulang
+  const warnPulangDiv = document.getElementById('rekap-gps-warnings-pulang');
+  const warnPulangList = document.getElementById('rekap-gps-warnings-pulang-list');
+  if (warnPulangDiv && warnPulangList) {
+    if (row.gpsWarningsPulang && row.gpsWarningsPulang.length) {
+      warnPulangDiv.style.display = 'block';
+      warnPulangList.innerHTML = row.gpsWarningsPulang.map(w=>'<div>• '+w+'</div>').join('');
+    } else {
+      warnPulangDiv.style.display = 'none';
+    }
   }
 
   // GPS warnings
@@ -4495,12 +4920,14 @@ function lihatDetail(btnOrUid, date, tab) {
   setTimeout(() => {
     const wrap = document.getElementById('rekap-map-detail-wrap');
     if (wrap) wrap.scrollIntoView({block:'nearest'});
-    initDetailMap(row.lat, row.lng, row.name, row.masuk);
+    initDetailMap(row.lat, row.lng, row.name, row.masuk, row.latPulang, row.lngPulang, row.pulang);
   }, 500);
 }
 
-function initDetailMap(lat, lng, name, time) {
-  if (!lat || !lng) {
+function initDetailMap(lat, lng, name, timeMasuk, latPulang, lngPulang, timePulang) {
+  const hasIn = lat && lng;
+  const hasOut = latPulang && lngPulang;
+  if (!hasIn && !hasOut) {
     document.getElementById('rekap-map-detail').innerHTML =
       '<div style="background:#f1f5f9;border-radius:10px;height:200px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.85rem"><i class="fas fa-map-marker-alt" style="margin-right:6px"></i>Data lokasi tidak tersedia</div>';
     return;
@@ -4509,28 +4936,47 @@ function initDetailMap(lat, lng, name, time) {
     detailMapObj.remove();
     detailMapObj = null;
   }
-  // Pastikan container siap sebelum Leaflet init
   const mapContainer = document.getElementById('rekap-map-detail');
   const mapWrap = document.getElementById('rekap-map-detail-wrap');
   mapContainer.style.width = '100%';
   mapContainer.style.height = '220px';
   mapContainer.innerHTML = '';
   if (mapWrap) { mapWrap.style.height = '220px'; mapWrap.style.minHeight = '220px'; }
+
+  // Tentukan center peta
+  const centerLat = hasIn ? lat : latPulang;
+  const centerLng = hasIn ? lng : lngPulang;
+
   detailMapObj = L.map('rekap-map-detail', {zoomControl:true, attributionControl:true, preferCanvas:true});
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    subdomains: ['a','b','c'],
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+    subdomains: ['a','b','c'], maxZoom:19, attribution: '&copy; OpenStreetMap contributors'
   }).addTo(detailMapObj);
-  detailMapObj.setView([lat, lng], 17);
+  detailMapObj.setView([centerLat, centerLng], 17);
 
-  // Marker karyawan
-  const marker = L.circleMarker([lat, lng], {
-    radius:12, color:'#7c3aed', fillColor:'#7c3aed', fillOpacity:.8, weight:3
-  }).addTo(detailMapObj);
-  marker.bindPopup('<b>'+name+'</b><br>'+time).openPopup();
+  // Marker MASUK — hijau
+  if (hasIn) {
+    const markerIn = L.circleMarker([lat, lng], {
+      radius:12, color:'#16a34a', fillColor:'#16a34a', fillOpacity:.85, weight:3
+    }).addTo(detailMapObj);
+    markerIn.bindPopup('<b>🟢 Masuk: '+(timeMasuk||'—')+'</b><br>'+name);
+  }
 
-  // Lingkaran radius kantor jika ada
+  // Marker PULANG — oranye
+  if (hasOut) {
+    const markerOut = L.circleMarker([latPulang, lngPulang], {
+      radius:12, color:'#ea580c', fillColor:'#ea580c', fillOpacity:.85, weight:3
+    }).addTo(detailMapObj);
+    markerOut.bindPopup('<b>🟠 Pulang: '+(timePulang||'—')+'</b><br>'+name);
+  }
+
+  // Garis masuk → pulang jika keduanya ada
+  if (hasIn && hasOut) {
+    L.polyline([[lat,lng],[latPulang,lngPulang]], {
+      color:'#64748b', weight:2, dashArray:'6'
+    }).addTo(detailMapObj);
+  }
+
+  // Lingkaran radius & marker kantor
   if (officeConfig) {
     L.circle([officeConfig.lat, officeConfig.lng], {
       radius: officeConfig.radius, color:'#0891b2',
@@ -4540,16 +4986,24 @@ function initDetailMap(lat, lng, name, time) {
       radius:8, color:'#0891b2', fillColor:'#0891b2', fillOpacity:1
     }).addTo(detailMapObj).bindPopup('<b>📍 '+(officeConfig.nama||'Kantor')+'</b>');
 
-    // Garis dari karyawan ke kantor
-    const dist = getDistance(lat, lng, officeConfig.lat, officeConfig.lng);
-    L.polyline([[lat,lng],[officeConfig.lat,officeConfig.lng]], {
-      color:'#94a3b8', weight:2, dashArray:'5'
-    }).addTo(detailMapObj).bindPopup('Jarak: '+Math.round(dist)+' m');
+    // Garis masuk ke kantor
+    if (hasIn) {
+      const dist = getDistance(lat, lng, officeConfig.lat, officeConfig.lng);
+      L.polyline([[lat,lng],[officeConfig.lat,officeConfig.lng]], {
+        color:'#94a3b8', weight:2, dashArray:'5'
+      }).addTo(detailMapObj).bindPopup('Jarak masuk: '+Math.round(dist)+' m');
+    }
   }
-  // Force invalidateSize agresif - penting karena ada di dalam overflow scroll container
+
+  // Auto-fit bounds jika ada dua titik
+  if (hasIn && hasOut) {
+    const bounds = L.latLngBounds([[lat,lng],[latPulang,lngPulang]]);
+    detailMapObj.fitBounds(bounds.pad(0.4));
+  }
+
   detailMapObj.whenReady(() => {
     detailMapObj.invalidateSize();
-    setTimeout(() => { if(detailMapObj) { detailMapObj.invalidateSize(); detailMapObj.setView([lat,lng],17); }}, 200);
+    setTimeout(() => { if(detailMapObj) { detailMapObj.invalidateSize(); }}, 200);
     setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 600);
     setTimeout(() => { if(detailMapObj) detailMapObj.invalidateSize(); }, 1200);
   });
@@ -4650,7 +5104,7 @@ window.addEventListener('beforeinstallprompt', e => {
 window.addEventListener('appinstalled', () => {
   document.getElementById('pwa-install-banner').classList.remove('show');
   deferredPrompt = null;
-  showToast('IDS-Abs berhasil diinstall!', 'success');
+  showToast('IPres berhasil diinstall!', 'success');
 });
 
 async function installPWA() {
@@ -4662,7 +5116,7 @@ async function installPWA() {
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
   deferredPrompt = null;
-  if (outcome === 'accepted') showToast('Menginstall IDS-Abs...', 'success');
+  if (outcome === 'accepted') showToast('Menginstall IPres...', 'success');
 }
 
 function dismissPWA() {
@@ -4690,7 +5144,7 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
 <div id="pwa-install-banner">
   <div class="pwa-banner-icon">📋</div>
   <div class="pwa-banner-info">
-    <div class="pba-title">Install IDS-Abs</div>
+    <div class="pba-title">Install IPres</div>
     <div class="pba-sub">Akses lebih cepat tanpa browser</div>
   </div>
   <div class="pwa-banner-actions">
@@ -4773,21 +5227,40 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
           <div class="ri-val" id="rd-pulang" style="color:var(--accent)">—</div>
         </div>
         <div class="rekap-info-item">
-          <div class="ri-label">Akurasi GPS</div>
+          <div class="ri-label">Akurasi GPS DATANG</div>
           <div class="ri-val" id="rd-akurasi">—</div>
         </div>
         <div class="rekap-info-item">
-          <div class="ri-label">Skor GPS</div>
+          <div class="ri-label">Skor GPS DATANG</div>
           <div class="ri-val" id="rd-fakescore">—</div>
         </div>
       </div>
       <!-- Koordinat -->
-      <div class="rekap-info-item" style="margin-bottom:14px">
-        <div class="ri-label">Koordinat Lokasi Masuk</div>
+      <div class="rekap-info-item" style="margin-bottom:8px">
+        <div class="ri-label">📍 Koordinat Lokasi Masuk</div>
         <div class="ri-val" id="rd-koordinat" style="font-size:.78rem;word-break:break-all">—</div>
       </div>
+      <div class="rekap-info-item" style="margin-bottom:14px">
+        <div class="ri-label">📍 Koordinat Lokasi Pulang</div>
+        <div class="ri-val" id="rd-koordinat-pulang" style="font-size:.78rem;word-break:break-all">—</div>
+      </div>
+      <!-- Info GPS Pulang -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="rekap-info-item">
+          <div class="ri-label">Akurasi GPS Pulang</div>
+          <div class="ri-val" id="rd-akurasi-pulang">—</div>
+        </div>
+        <div class="rekap-info-item">
+          <div class="ri-label">Skor GPS Pulang</div>
+          <div class="ri-val" id="rd-fakescore-pulang">—</div>
+        </div>
+      </div>
       <!-- Peta lokasi -->
-      <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">📍 Lokasi Absen</div>
+      <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">🗺️ Peta Lokasi Absen</div>
+      <div style="font-size:.72rem;color:var(--text-muted);margin-bottom:6px">
+        <span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px"><span style="width:10px;height:10px;border-radius:50%;background:#16a34a;display:inline-block"></span>Masuk</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#ea580c;display:inline-block"></span>Pulang</span>
+      </div>
       <div id="rekap-map-detail-wrap" style="width:100%;height:220px;min-height:220px;border-radius:10px;overflow:hidden;border:2px solid var(--border);margin-bottom:14px;background:#f1f5f9;position:relative;z-index:1">
         <div id="rekap-map-detail" style="width:100%;height:220px;position:absolute;top:0;left:0"></div>
       </div>
@@ -4801,11 +5274,62 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
       <div class="rekap-foto-preview" id="rekap-foto-pulang">
         <div class="no-foto"><i class="fas fa-camera" style="font-size:2rem;display:block;margin-bottom:8px;opacity:.4"></i>Foto tidak tersedia</div>
       </div>
-      <!-- Peringatan GPS -->
+      <!-- Peringatan GPS Masuk -->
       <div id="rekap-gps-warnings" style="display:none;background:var(--red-light);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:.78rem;color:var(--red)">
-        <div style="font-weight:700;margin-bottom:4px"><i class="fas fa-exclamation-triangle" style="margin-right:5px"></i>Peringatan GPS</div>
+        <div style="font-weight:700;margin-bottom:4px"><i class="fas fa-exclamation-triangle" style="margin-right:5px"></i>Peringatan GPS Masuk</div>
         <div id="rekap-gps-warnings-list"></div>
       </div>
+      <!-- Peringatan GPS Pulang -->
+      <div id="rekap-gps-warnings-pulang" style="display:none;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:.78rem;color:#ea580c">
+        <div style="font-weight:700;margin-bottom:4px"><i class="fas fa-exclamation-triangle" style="margin-right:5px"></i>Peringatan GPS Pulang</div>
+        <div id="rekap-gps-warnings-pulang-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FACE ENROLLMENT (Admin) -->
+<div id="modal-face-enroll">
+  <div class="face-enroll-box">
+    <div class="face-enroll-hdr">
+      <h3><i class="fas fa-face-smile-wink" style="margin-right:8px"></i>Foto Referensi Wajah</h3>
+      <button onclick="closeFaceEnroll()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="face-enroll-body">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px" id="face-enroll-username">—</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:14px">Foto referensi digunakan untuk verifikasi wajah saat absen. Pastikan wajah terlihat jelas, pencahayaan cukup, dan tidak tertutup masker/kacamata.</div>
+      <div class="face-ref-preview" id="face-ref-preview">
+        <div class="fref-empty" id="fref-empty-msg"><i class="fas fa-user-circle" style="font-size:2.5rem;display:block;margin-bottom:8px;opacity:.4"></i>Belum ada foto referensi</div>
+        <img id="face-ref-img" style="display:none;width:100%;height:100%;object-fit:cover">
+        <canvas id="face-ref-canvas" style="display:none;position:absolute;inset:0;width:100%;height:100%"></canvas>
+      </div>
+      <div id="face-detect-status" style="display:none;font-size:.78rem;font-weight:700;text-align:center;padding:8px 12px;border-radius:8px;margin-bottom:12px"></div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">Upload / Ambil Foto Referensi</div>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;padding:10px;background:var(--primary-light);border:1.5px solid var(--primary);border-radius:8px;color:var(--primary);font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Plus Jakarta Sans',sans-serif">
+            <i class="fas fa-image"></i> Pilih Foto
+            <input type="file" accept="image/*" id="face-ref-file-input" style="display:none" onchange="handleFaceRefUpload(this)">
+          </label>
+          <label style="flex:1;padding:10px;background:#f0fdfa;border:1.5px solid #0d9488;border-radius:8px;color:#0d9488;font-size:.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Plus Jakarta Sans',sans-serif">
+            <i class="fas fa-camera"></i> Ambil Kamera
+            <input type="file" accept="image/*" capture="user" id="face-ref-camera-input" style="display:none" onchange="handleFaceRefUpload(this)">
+          </label>
+        </div>
+      </div>
+      <div id="face-enroll-info" style="display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#15803d;margin-bottom:12px">
+        <div style="font-weight:700;margin-bottom:3px"><i class="fas fa-check-circle" style="margin-right:5px"></i>Wajah berhasil terdeteksi</div>
+        <div id="face-enroll-info-detail">Descriptor wajah siap disimpan.</div>
+      </div>
+      <div id="face-enroll-fail" style="display:none;background:var(--red-light);border:1.5px solid #fecaca;border-radius:8px;padding:10px 12px;font-size:.78rem;color:var(--red);margin-bottom:12px">
+        <div style="font-weight:700;margin-bottom:3px"><i class="fas fa-exclamation-circle" style="margin-right:5px"></i>Wajah tidak terdeteksi</div>
+        <div>Pastikan wajah terlihat jelas, tidak tertutup, dan pencahayaan cukup. Coba foto lain.</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button onclick="closeFaceEnroll()" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);color:var(--text-muted);font-weight:600;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer">Batal</button>
+        <button id="btn-save-face-ref" onclick="saveFaceRef()" disabled style="flex:1;padding:12px;border-radius:10px;border:none;background:#0891b2;color:#fff;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;opacity:.5"><i class="fas fa-save"></i> Simpan Referensi</button>
+      </div>
+      <div id="face-enroll-model-note" style="font-size:.7rem;color:var(--text-muted);text-align:center;margin-top:10px"><i class="fas fa-spinner fa-spin" style="margin-right:4px"></i>Memuat model AI wajah... (±5 MB, sekali saja)</div>
     </div>
   </div>
 </div>
