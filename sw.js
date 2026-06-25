@@ -1,6 +1,6 @@
 // SnapAbsen Service Worker v1.0.1
-const CACHE_NAME = 'snapabsen-v3';
-const ASSETS_CACHE = 'snapabsen-assets-v3';
+const CACHE_NAME = 'idsabsen-v3';
+const ASSETS_CACHE = 'idsabsen-assets-v3';
 
 // File lokal yang di-cache
 const STATIC_ASSETS = [
