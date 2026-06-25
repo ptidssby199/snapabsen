@@ -1,6 +1,6 @@
 {
-  "name": "SnapAbsen — Aplikasi Absensi",
-  "short_name": "SnapAbsen",
+  "name": "IDSAbsen — Aplikasi Absensi",
+  "short_name": "IDSAbsen",
   "description": "Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie",
   "start_url": "./index.html",
   "display": "standalone",
