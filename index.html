@@ -2451,30 +2451,42 @@ async function handleFaceRefUpload(input){
 
   const reader = new FileReader();
   reader.onload = async (e) => {
-    const dataUrl = e.target.result;
-    // Tampilkan preview
+    const rawDataUrl = e.target.result;
+
+    // ── LANGKAH 1: Resize foto ke max 320px untuk deteksi wajah ──────
+    // Foto asli (bisa > 2MB) TIDAK pernah disimpan. Kita kerja dengan
+    // versi kecil sejak awal agar tidak ada resiko overflow Firestore.
+    const workingImg = await _resizeForDetection(rawDataUrl, 320);
+
+    // Tampilkan preview (pakai versi kecil)
     const imgEl = document.getElementById('face-ref-img');
-    imgEl.src = dataUrl;
+    imgEl.src = workingImg;
     imgEl.style.display = 'block';
     document.getElementById('fref-empty-msg').style.display = 'none';
+
     imgEl.onload = async () => {
-      // Pastikan model siap
+      // ── LANGKAH 2: Buat thumbnail 80x80 untuk preview di Firestore ──
+      // Ini yang akan disimpan ke field faceRef (bukan foto asli)
+      const thumb = await _makeThumb(workingImg, 80, 80);
+      faceEnrollPhotoData = thumb; // SELALU thumbnail kecil, bukan foto asli
+
+      // ── LANGKAH 3: Pastikan model AI siap ───────────────────────────
       const ready = await loadFaceApiModels();
       if(!ready){
         ds.style.background = '#fef9c3'; ds.style.color = '#92400e';
         ds.innerHTML = '<i class="fas fa-exclamation-circle" style="margin-right:5px"></i>Model AI tidak tersedia. Simpan foto saja (tanpa verifikasi otomatis).';
-        // Simpan foto saja tanpa descriptor
-        faceEnrollPhotoData = dataUrl;
         document.getElementById('btn-save-face-ref').disabled = false;
         document.getElementById('btn-save-face-ref').style.opacity = '1';
         return;
       }
+
       ds.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px"></i>Mendeteksi wajah...';
+
+      // ── LANGKAH 4: Ekstrak descriptor dari gambar kerja ─────────────
       try{
         const descriptor = await getFaceDescriptor(imgEl);
         if(descriptor){
           faceEnrollDescriptor = descriptor;
-          faceEnrollPhotoData = dataUrl;
           ds.style.background = '#f0fdf4'; ds.style.color = '#15803d';
           ds.innerHTML = '<i class="fas fa-check-circle" style="margin-right:5px"></i>Wajah terdeteksi! Siap disimpan.';
           document.getElementById('face-enroll-info').style.display = 'block';
@@ -2496,33 +2508,72 @@ async function handleFaceRefUpload(input){
   reader.readAsDataURL(file);
 }
 
+// Resize foto ke max dimensi untuk keperluan deteksi wajah
+function _resizeForDetection(dataUrl, maxDim){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let w=img.width, h=img.height;
+      if(w > maxDim || h > maxDim){
+        if(w>h){ h=Math.round(h*maxDim/w); w=maxDim; }
+        else { w=Math.round(w*maxDim/h); h=maxDim; }
+      }
+      const c=document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
 async function saveFaceRef(){
   if(!faceEnrollUid){ showToast('UID user tidak ditemukan','error'); return; }
   if(!faceEnrollPhotoData){ showToast('Belum ada foto yang dipilih','error'); return; }
   if(!firebaseDb){ showToast('Firebase belum terhubung','error'); return; }
+
+  // Validasi ukuran — faceEnrollPhotoData harus sudah berupa thumbnail kecil
+  // Jika entah bagaimana masih besar, kompres ulang sekali lagi sebagai safety net
+  let safeThumb = faceEnrollPhotoData;
+  if(safeThumb.length > 20000){ // > ~15KB berarti masih terlalu besar
+    safeThumb = await _makeThumb(faceEnrollPhotoData, 80, 80);
+  }
+
+  // Pastikan BENAR-BENAR di bawah 50KB sebelum kirim ke Firestore
+  if(safeThumb.length > 65000){
+    showToast('Thumbnail masih terlalu besar. Coba foto lain.', 'error');
+    return;
+  }
 
   const btn = document.getElementById('btn-save-face-ref');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
   try{
-    // Buat thumbnail kecil (60x60px ~2KB) hanya untuk preview di admin panel
-    // Foto asli TIDAK disimpan ke Firestore (terlalu besar, akan melewati limit 1MB)
-    const thumb = await _makeThumb(faceEnrollPhotoData, 80, 80);
-
     const updateData = {
-      faceRef: thumb,                   // thumbnail kecil saja untuk preview
+      faceRef: safeThumb,   // thumbnail 80x80 ~3-5KB
       faceRefUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       faceRefUpdatedBy: currentUser?.name || 'Admin',
     };
     if(faceEnrollDescriptor){
-      // Descriptor: 128 angka float ~1KB — aman disimpan di Firestore
-      updateData.faceDescriptor = Array.from(faceEnrollDescriptor).reduce((o,v,i)=>{ o[i]=v; return o; }, {});
+      // Descriptor 128 float ~3KB — aman untuk Firestore
+      updateData.faceDescriptor = Array.from(faceEnrollDescriptor)
+        .reduce((o,v,i)=>{ o[i]=v; return o; }, {});
     }
+
+    console.log('[FaceEnroll] Menyimpan ke Firestore...',
+      'faceRef size:', safeThumb.length, 'bytes',
+      '| hasDescriptor:', !!faceEnrollDescriptor
+    );
+
     await firebaseDb.collection('users').doc(faceEnrollUid).update(updateData);
     showToast('Foto referensi wajah berhasil disimpan!', 'success');
     const idx = allUsers.findIndex(u => u.uid === faceEnrollUid);
-    if(idx >= 0){ allUsers[idx].faceRef = thumb; allUsers[idx].faceDescriptor = updateData.faceDescriptor; }
+    if(idx >= 0){
+      allUsers[idx].faceRef = safeThumb;
+      allUsers[idx].faceDescriptor = updateData.faceDescriptor;
+    }
     renderUserList(filteredUsers.length ? filteredUsers : allUsers);
     closeFaceEnroll();
   }catch(e){
