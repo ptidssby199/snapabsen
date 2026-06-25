@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SnapAbsen — Aplikasi Absensi</title>
+<title>IDS-Abs — Aplikasi Absensi</title>
 <!-- PWA -->
-<meta name="application-name" content="SnapAbsen">
+<meta name="application-name" content="IDS-Abs">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SnapAbsen">
+<meta name="apple-mobile-web-app-title" content="IDS-Abs">
 <meta name="theme-color" content="#1a56db">
 <meta name="description" content="Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie">
 <link rel="manifest" href="manifest.json">
@@ -482,12 +482,12 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 </head>
 <body>
 
-<div id="loader"><div class="logo-big">Snap<span>Absen</span></div><p>Aplikasi Absensi Modern</p><div class="loader-bar"><div class="loader-bar-fill"></div></div></div>
+<div id="loader"><div class="logo-big">IDS<span>Abs</span></div><p>Aplikasi Absensi Modern</p><div class="loader-bar"><div class="loader-bar-fill"></div></div></div>
 
-<div id="session-check"><div class="brand">Snap<span>Absen</span></div><p><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Memverifikasi sesi...</p></div>
+<div id="session-check"><div class="brand">IDS<span>Abs</span></div><p><i class="fas fa-spinner fa-spin" style="margin-right:8px"></i>Memverifikasi sesi...</p></div>
 <div id="page-login">
   <div class="login-card">
-    <div class="login-logo"><div class="brand">Snap<span>Absen</span></div><p>Absensi Karyawan PT. Indonesia Dwi Sembilan</p></div>
+    <div class="login-logo"><div class="brand">IDS<span>Abs</span></div><p>Absensi Karyawan PT. Indonesia Dwi Sembilan</p></div>
     <label>Email</label><input type="text" id="login-user" placeholder="email@perusahaan.com">
     <label>Password</label><input type="password" id="login-pass" placeholder="Masukkan password">
     <button class="btn-login" onclick="doLogin()"><i class="fas fa-sign-in-alt" style="margin-right:8px"></i>Masuk</button>
@@ -497,7 +497,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 
 <div id="page-app">
   <div class="topbar">
-    <div class="brand">Snap<span>Absen</span></div>
+    <div class="brand">IDS<span>Abs</span></div>
     <div class="topbar-right">
       <span class="role-pill karyawan" id="topbar-role-pill">KARYAWAN</span>
       <button class="topbar-btn" onclick="openFirebaseModal()"><i class="fas fa-fire" style="color:#f97316"></i></button>
@@ -721,7 +721,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
       </div>
       <div class="menu-section-title">Tentang</div>
       <div class="menu-list">
-        <button class="menu-item" onclick="showToast('SnapAbsen v2.0.0')"><div class="mi-icon" style="background:var(--primary-light)"><i class="fas fa-info-circle" style="color:var(--primary)"></i></div><div><div class="mi-label">Tentang Aplikasi</div><div class="mi-desc">SnapAbsen v2.0.0</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
+        <button class="menu-item" onclick="showToast('IDS-Abs v2.0.0')"><div class="mi-icon" style="background:var(--primary-light)"><i class="fas fa-info-circle" style="color:var(--primary)"></i></div><div><div class="mi-label">Tentang Aplikasi</div><div class="mi-desc">IDS-Abs v2.0.0</div></div><i class="fas fa-chevron-right mi-arrow"></i></button>
       </div>
       <button class="btn-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Keluar dari Aplikasi</button>
     </div>
@@ -1227,7 +1227,7 @@ let jadwalUsers=[];
 
 // STATE
 let currentUser=null,cameraStream=null,capturedPhoto=null,currentLocation=null,locationOk=false;
-// Kode identitas SnapAbsen sebagai "mesin absen" untuk sync ke SQL Server (T_EmployeeAbsen).
+// Kode identitas IDS-Abs sebagai "mesin absen" untuk sync ke SQL Server (T_EmployeeAbsen).
 // Saat ini hanya 1 lokasi kantor, jadi nilainya tetap. Jika nanti ada cabang baru,
 // ubah logic ini agar mengembalikan kode berbeda sesuai lokasi/radius yang dipakai.
 const CHECKIN_MACHINE_CODE='SB1';
@@ -1637,7 +1637,7 @@ async function doFingerprintVerif(){
     const cred=await navigator.credentials.create({
       publicKey:{
         challenge,
-        rp:{name:'SnapAbsen',id:rpId},
+        rp:{name:'IDS-Abs',id:rpId},
         user:{id:userId,name:userName,displayName:userName},
         pubKeyCredParams:[
           {alg:-7,type:'public-key'},   // ES256
@@ -2502,7 +2502,7 @@ async function loadLaporan(silent=false){
       laporanJadwalMap[r.uid][r.date]=r;
     });
     // Sort absensi
-    laporanData=snapAbsen.docs.map(d=>({id:d.id,...d.data()}))
+    laporanData=IDS-Abs.docs.map(d=>({id:d.id,...d.data()}))
       .sort((a,b)=>{
         if(a.date!==b.date) return a.date>b.date?1:-1;
         return (a.time||'')>(b.time||'')?1:-1;
@@ -3060,7 +3060,7 @@ async function cariAlamat(){
   resultDiv.innerHTML='<div style="padding:10px 12px;color:#0369a1;font-size:.82rem"><i class="fas fa-spinner fa-spin" style="margin-right:6px"></i>Mencari alamat...</div>';
   try{
     const url='https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q='+encodeURIComponent(q+', Indonesia');
-    const res=await fetch(url,{headers:{'Accept-Language':'id','User-Agent':'SnapAbsen/1.0'}});
+    const res=await fetch(url,{headers:{'Accept-Language':'id','User-Agent':'IDS-Abs/1.0'}});
     const results=await res.json();
     if(!results.length){
       resultDiv.innerHTML='<div style="padding:10px 12px;color:#dc2626;font-size:.82rem"><i class="fas fa-times-circle" style="margin-right:6px"></i>Alamat tidak ditemukan. Coba perjelas nama jalan atau kota.</div>';
@@ -4650,7 +4650,7 @@ window.addEventListener('beforeinstallprompt', e => {
 window.addEventListener('appinstalled', () => {
   document.getElementById('pwa-install-banner').classList.remove('show');
   deferredPrompt = null;
-  showToast('SnapAbsen berhasil diinstall!', 'success');
+  showToast('IDS-Abs berhasil diinstall!', 'success');
 });
 
 async function installPWA() {
@@ -4662,7 +4662,7 @@ async function installPWA() {
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
   deferredPrompt = null;
-  if (outcome === 'accepted') showToast('Menginstall SnapAbsen...', 'success');
+  if (outcome === 'accepted') showToast('Menginstall IDS-Abs...', 'success');
 }
 
 function dismissPWA() {
@@ -4690,7 +4690,7 @@ if (!navigator.onLine) document.getElementById('offline-bar').classList.add('sho
 <div id="pwa-install-banner">
   <div class="pwa-banner-icon">📋</div>
   <div class="pwa-banner-info">
-    <div class="pba-title">Install SnapAbsen</div>
+    <div class="pba-title">Install IDS-Abs</div>
     <div class="pba-sub">Akses lebih cepat tanpa browser</div>
   </div>
   <div class="pwa-banner-actions">
