@@ -1,6 +1,6 @@
 {
-  "name": "IDSAbsen — Aplikasi Absensi",
-  "short_name": "IDSAbsen",
+  "name": "IDS-Abs — Aplikasi Absensi",
+  "short_name": "IDS-Abs",
   "description": "Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie",
   "start_url": "./index.html",
   "display": "standalone",
