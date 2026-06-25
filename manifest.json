@@ -1,6 +1,6 @@
 {
-  "name": "IDS-Abs — Aplikasi Absensi",
-  "short_name": "IDS-Abs",
+  "name": "IPres — Aplikasi Absensi",
+  "short_name": "IPres",
   "description": "Aplikasi Absensi Karyawan Modern dengan GPS dan Selfie",
   "start_url": "./index.html",
   "display": "standalone",
