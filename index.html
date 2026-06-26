@@ -2678,13 +2678,52 @@ async function submitAbsen(type){
   btns.forEach(b=>{ b.innerHTML='<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; });
   dbgLog('START: '+type+(capturedPhoto?' | foto '+Math.round(capturedPhoto.length/1024)+'KB':' | tanpa foto'));
   try{
+    // ── Tentukan tanggal yang akan disimpan ───────────────────────────
+    // Untuk absen MASUK: selalu gunakan tanggal hari ini
+    // Untuk absen PULANG: cari tanggal absen masuk terakhir yang belum
+    //   ada pasangan pulangnya. Kasus: masuk Senin malam, pulang Selasa
+    //   pagi → data pulang harus tetap tercatat dengan date Senin.
+    let absenDate = getLocalDateStr(now);
+
+    if(type === 'pulang' && firebaseDb && currentUser?.uid){
+      try{
+        const dBatas = new Date(now);
+        dBatas.setDate(dBatas.getDate() - 3);
+        const batasStr = getLocalDateStr(dBatas);
+
+        // Satu query sederhana — tidak butuh composite index
+        const snapRecent = await firebaseDb.collection('absensi')
+          .where('uid','==', currentUser.uid)
+          .where('date','>=', batasStr)
+          .get();
+
+        // Filter & kelompokkan di sisi client
+        const docsAll = snapRecent.docs.map(d => d.data());
+        const masukDocs = docsAll
+          .filter(d => d.type === 'masuk')
+          .sort((a,b) => a.date > b.date ? -1 : a.date < b.date ? 1 : (a.time||'') > (b.time||'') ? -1 : 1);
+        const pulangDates = new Set(docsAll.filter(d => d.type === 'pulang').map(d => d.date));
+
+        for(const doc of masukDocs){
+          if(!pulangDates.has(doc.date)){
+            absenDate = doc.date;
+            dbgLog('[Pulang] Menggunakan tanggal masuk: '+absenDate+' (bukan today: '+getLocalDateStr(now)+')');
+            break;
+          }
+        }
+      }catch(eLookup){
+        dbgLog('[Pulang] Gagal cari tanggal masuk, pakai today: '+eLookup.message);
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────
+
     // Foto untuk absen offline dikompres lebih agresif agar tidak membebani localStorage
     let photoToSave = capturedPhoto;
     if(capturedPhoto && !navigator.onLine){
       photoToSave = await compressPhotoForOffline(capturedPhoto);
     }
     const result = await saveAbsenToFirebase({
-      type, time:t, date:getLocalDateStr(now),
+      type, time:t, date: absenDate,
       lat:currentLocation?.lat, lng:currentLocation?.lng,
       accuracy:currentLocation?.acc,
       fakeGpsScore:currentLocation?.fakeScore||0,
